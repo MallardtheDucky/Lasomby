@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Third Lasombian Republic Archives</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Lucide Icons (Vanilla JS version) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Google Fonts -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Lato:wght@300;400;700;900&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap');
+        
+        body {
+            background-color: #1a1816;
+            background-image: radial-gradient(circle at 50% 50%, #2c241b 0%, #1a1816 100%);
+            color: #2c241b;
+        }
+        
+        .font-playfair { font-family: 'Playfair Display', serif; }
+        .font-lato { font-family: 'Lato', sans-serif; }
+        .font-merriweather { font-family: 'Merriweather', serif; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { bg: #1a1816; }
+        ::-webkit-scrollbar-thumb { background: #c5a059; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #e2d5c3; }
+
+        .paper-texture {
+            background-color: #f4f0e6;
+            background-image: url('https://www.transparenttextures.com/patterns/cream-paper.png');
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- ICON FIX: Polyfill to turn Lucide data objects into React Components ---
+        const createLucideComponent = (iconName) => ({ size = 24, className = "", ...props }) => {
+            // Access the icon definition from the global lucide object
+            // Try PascalCase first (standard), then camelCase (sometimes used in bundles)
+            const iconDef = lucide.icons[iconName] || lucide.icons[iconName.charAt(0).toLowerCase() + iconName.slice(1)];
+            
+            if (!iconDef) {
+                console.warn(`Icon "${iconName}" not found in lucide library.`);
+                return null;
+            }
+            
+            return (
+                <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    width={size} 
+                    height={size} 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    className={className}
+                    {...props}
+                >
+                    {iconDef.map(([tag, attrs], i) => React.createElement(tag, { ...attrs, key: i }))}
+                </svg>
+            );
+        };
+
+        // Initialize the icons we need
+        const { 
+            Landmark, Users, BookOpen, Shield, TrendingUp, Menu, X, 
+            Gavel, AlertTriangle, Crosshair, Anchor, Wind, PieChart 
+        } = Object.fromEntries(
+            ['Landmark', 'Users', 'BookOpen', 'Shield', 'TrendingUp', 'Menu', 'X', 
+             'Gavel', 'AlertTriangle', 'Crosshair', 'Anchor', 'Wind', 'PieChart'].map(name => [name, createLucideComponent(name)])
+        );
+
+        // --- USER CONFIGURATION ---
+        
+        // PASTE YOUR FLAG IMAGE URL HERE
+        const FLAG_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Flag_of_the_Republic_of_China_Army_Reserve.svg/2560px-Flag_of_the_Republic_of_China_Army_Reserve.svg.png"; 
+
+        // PARLIAMENT DATA (Edit seats and colors here)
+        // Total seats usually 150-300 for a unicameral assembly
+        const PARLIAMENT_DATA = [
+            { id: 'lsf', name: 'Lasombian Socialist Front', seats: 35, color: '#8b0000' }, // Far Left
+            { id: 'drm', name: 'Democratic Renewal', seats: 45, color: '#e53935' }, // Center Left
+            { id: 'pur', name: 'Republican Union (Gov)', seats: 90, color: '#c5a059' }, // Center Right (Ruling)
+            { id: 'tp', name: 'Traditionalist Party', seats: 30, color: '#2c241b' }  // Far Right
+        ];
+
+        // --- COMPONENTS ---
+
+        const StatItem = ({ icon: Icon, label, value, trend }) => (
+            <div className="flex flex-col items-center justify-center px-4 border-r border-[#ffffff20] last:border-0 min-w-[80px]">
+                <div className="flex items-center gap-2 mb-1">
+                    <Icon size={16} className="text-[#e2d5c3]" />
+                    <span className={`font-bold text-lg ${trend === 'positive' ? 'text-[#4caf50]' : trend === 'negative' ? 'text-[#e53935]' : 'text-[#ffb74d]'}`}>
+                        {value}
+                    </span>
+                </div>
+                <span className="text-[10px] uppercase tracking-widest text-[#a89f91] font-semibold">{label}</span>
+            </div>
+        );
+
+        const Portrait = ({ name, role }) => (
+            <div className="flex flex-col items-center mb-4 group cursor-pointer">
+                <div className="w-32 h-40 bg-gray-400 border-4 border-[#4a4036] shadow-[0_4px_6px_rgba(0,0,0,0.5)] flex items-end justify-center overflow-hidden relative transition-transform transform group-hover:-translate-y-1">
+                    <div className="absolute inset-0 bg-cover bg-center grayscale contrast-125 sepia-[.3]" style={{backgroundImage: `url('https://i.pravatar.cc/300?u=${name}')`}}></div>
+                    <div className="w-full h-full bg-gradient-to-t from-black/80 to-transparent absolute z-10"></div>
+                </div>
+                <div className="mt-2 text-center relative z-20">
+                    <h3 className="font-playfair font-bold text-[#2c241b] text-lg leading-tight">{name}</h3>
+                    <p className="font-lato text-xs uppercase tracking-widest text-[#6b5b48]">{role}</p>
+                </div>
+            </div>
+        );
+
+        const PaperReport = ({ title, date, classification = "UNCLASSIFIED", children }) => (
+            <div className="paper-texture text-[#2c241b] shadow-[0_10px_30px_rgba(0,0,0,0.5)] max-w-4xl mx-auto my-8 relative rotate-[0.2deg] transition-all duration-500 hover:rotate-0 hover:shadow-[0_15px_40px_rgba(0,0,0,0.6)]">
+                {/* Stamp */}
+                <div className="absolute top-4 right-4 border-4 border-[#8b0000] p-2 rotate-[-12deg] opacity-70 pointer-events-none z-10">
+                    <span className="text-[#8b0000] font-black uppercase tracking-widest text-sm block">{classification}</span>
+                </div>
+
+                {/* Header */}
+                <div className="border-b-2 border-[#2c241b] p-8 pb-4">
+                    <h1 className="font-playfair text-4xl font-black uppercase tracking-tight mb-2">{title}</h1>
+                    <div className="flex items-center gap-4 font-lato text-sm text-[#5d5244]">
+                        <span className="flex items-center gap-1"><Gavel size={14}/> Official Document</span>
+                        <span>|</span>
+                        <span>{date}</span>
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-8 md:p-12 font-merriweather leading-relaxed">
+                    {children}
+                </div>
+
+                {/* Footer */}
+                <div className="bg-[#e6e0d4] p-4 text-center border-t border-[#d1c7b7]">
+                    <p className="font-lato text-xs text-[#8a7f70] uppercase tracking-widest">Ministry of Information • Omrybaras • 1949</p>
+                </div>
+            </div>
+        );
+
+        // --- CHART COMPONENTS ---
+
+        const SimpleLineGraph = ({ data, color = "#2c241b", label }) => {
+            const height = 150;
+            const width = 400;
+            const maxVal = Math.max(...data);
+            const minVal = Math.min(...data);
+            
+            const points = data.map((d, i) => {
+                const x = (i / (data.length - 1)) * width;
+                const y = height - ((d - minVal) / (maxVal - minVal)) * height;
+                return `${x},${y}`;
+            }).join(" ");
+
+            return (
+                <div className="my-6">
+                    <h4 className="font-lato text-xs font-bold uppercase tracking-widest mb-2 text-[#5d5244]">{label}</h4>
+                    <svg viewBox={`0 -10 ${width} ${height + 20}`} className="w-full h-auto overflow-visible">
+                        {/* Grid lines */}
+                        <line x1="0" y1="0" x2={width} y2="0" stroke="#d1c7b7" strokeWidth="1" strokeDasharray="4 4" />
+                        <line x1="0" y1={height/2} x2={width} y2={height/2} stroke="#d1c7b7" strokeWidth="1" strokeDasharray="4 4" />
+                        <line x1="0" y1={height} x2={width} y2={height} stroke="#d1c7b7" strokeWidth="1" strokeDasharray="4 4" />
+                        
+                        {/* The Line */}
+                        <polyline 
+                            fill="none" 
+                            stroke={color} 
+                            strokeWidth="3" 
+                            points={points} 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round"
+                        />
+                        
+                        {/* Dots */}
+                        {data.map((d, i) => {
+                             const x = (i / (data.length - 1)) * width;
+                             const y = height - ((d - minVal) / (maxVal - minVal)) * height;
+                             return <circle key={i} cx={x} cy={y} r="4" fill="#f4f0e6" stroke={color} strokeWidth="2" />
+                        })}
+                    </svg>
+                    <div className="flex justify-between text-[10px] font-lato uppercase text-[#8a7f70] mt-1">
+                        <span>1945</span>
+                        <span>1946</span>
+                        <span>1947</span>
+                        <span>1948</span>
+                        <span>1949</span>
+                    </div>
+                </div>
+            );
+        };
+
+        const ParliamentHemicycle = ({ parties }) => {
+            // Calculate total seats
+            const totalSeats = parties.reduce((sum, p) => sum + p.seats, 0);
+            
+            // Generate dots
+            let currentSeat = 0;
+            const dots = [];
+            const radius = 150;
+            const cx = 200;
+            const cy = 180;
+            
+            // We want roughly 4-6 rows of dots
+            const rows = 8;
+            
+            parties.forEach(party => {
+                for(let i=0; i < party.seats; i++) {
+                    // Determine which "slice" of the arch this dot belongs to
+                    const globalIndex = currentSeat;
+                    const progress = globalIndex / totalSeats; // 0 to 1
+                    
+                    // Simple logic to distribute dots in an arch
+                    // Angle from -180 (left) to 0 (right) -> actually radians Math.PI to 0
+                    // Let's stack them in rows. 
+                    // This is a simplified visual representation, not a perfect geometric seating chart
+                    
+                    const angle = Math.PI - (progress * Math.PI); 
+                    
+                    // Add some noise/row logic to make it look like a crowd
+                    // We distribute points along the arc, but "thicken" the arc
+                    const rowOffset = (i % rows) * 12; 
+                    const adjustedRadius = radius - rowOffset;
+                    
+                    // Adjust angle slightly for rows so they don't form straight lines radiating out
+                    const angleOffset = (i % rows) * 0.02;
+                    
+                    const x = cx + (adjustedRadius * Math.cos(angle + angleOffset));
+                    const y = cy - (adjustedRadius * Math.sin(angle + angleOffset)); // Subtract because SVG Y is down
+                    
+                    dots.push(
+                        <circle 
+                            key={`${party.id}-${i}`} 
+                            cx={x} 
+                            cy={y} 
+                            r="4" 
+                            fill={party.color} 
+                            stroke="#2c241b"
+                            strokeWidth="0.5"
+                            className="hover:r-6 transition-all duration-300"
+                        >
+                            <title>{party.name}</title>
+                        </circle>
+                    );
+                    currentSeat++;
+                }
+            });
+
+            return (
+                <div className="flex flex-col items-center my-8">
+                    <h3 className="font-playfair font-bold text-xl mb-4 border-b border-[#2c241b] pb-2">National Assembly Composition</h3>
+                    <svg viewBox="0 0 400 220" className="w-full max-w-md">
+                        {/* Podium */}
+                        <rect x="180" y="190" width="40" height="20" fill="#4a4036" />
+                        <path d="M170,210 L230,210 L220,190 L180,190 Z" fill="#2c241b" />
+                        
+                        {/* Seats */}
+                        {dots}
+                    </svg>
+                    
+                    {/* Legend */}
+                    <div className="flex flex-wrap justify-center gap-4 mt-4">
+                        {parties.map(p => (
+                            <div key={p.id} className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full" style={{backgroundColor: p.color}}></div>
+                                <span className="text-xs font-bold font-lato uppercase">{p.name} ({p.seats})</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- MAIN APP ---
+
+        function LasombyApp() {
+            const [activeTab, setActiveTab] = useState('overview');
+            const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+            const navItems = [
+                { id: 'overview', label: 'Overview', icon: Landmark },
+                { id: 'government', label: 'Government', icon: Users },
+                { id: 'assembly', label: 'Assembly', icon: PieChart },
+                { id: 'military', label: 'Military', icon: Shield },
+                { id: 'economy', label: 'Economy', icon: TrendingUp },
+            ];
+
+            return (
+                <div className="min-h-screen text-gray-100 font-sans selection:bg-[#c5a059] selection:text-black">
+                    
+                    {/* TOP BAR */}
+                    <div className="fixed top-0 w-full z-50 bg-[#141210] border-b border-[#3d342b] shadow-lg h-16 flex items-center justify-between px-4 md:px-8">
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="md:hidden text-[#c5a059]">
+                                {showMobileMenu ? <X /> : <Menu />}
+                            </button>
+                            
+                            <div className="flex items-center gap-3">
+                                <img src={FLAG_URL} alt="Flag" className="h-10 w-auto shadow-md border border-[#ffffff20]" />
+                                <div className="hidden md:block">
+                                    <h1 className="font-playfair font-bold text-xl text-[#e2d5c3] tracking-wide">LASOMBY</h1>
+                                    <span className="text-[10px] text-[#8a7f70] uppercase tracking-widest block -mt-1">Third Republic</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="hidden md:flex items-center h-full">
+                            <StatItem icon={Landmark} label="Budget" value="-2" trend="negative" />
+                            <StatItem icon={TrendingUp} label="Economy" value="Stagnant" trend="neutral" />
+                            <StatItem icon={Users} label="Welfare" value="Low" trend="negative" />
+                            <StatItem icon={Shield} label="Order" value="Medium" trend="neutral" />
+                        </div>
+                        
+                        <div className="flex flex-col items-end border-l border-[#ffffff20] pl-6 h-full justify-center">
+                            <span className="font-playfair font-bold text-2xl text-[#c5a059]">1949</span>
+                            <span className="text-[10px] text-[#8a7f70] uppercase">Term I</span>
+                        </div>
+                    </div>
+
+                    {/* MAIN LAYOUT */}
+                    <div className="pt-20 pb-12 px-4 md:px-8 max-w-7xl mx-auto flex flex-col md:flex-row gap-8">
+                        
+                        {/* SIDEBAR */}
+                        <aside className={`
+                            fixed md:relative top-16 md:top-0 left-0 h-full md:h-auto w-64 bg-[#1a1816]/95 md:bg-transparent z-40 transform transition-transform duration-300 ease-in-out border-r md:border-r-0 border-[#3d342b] md:block
+                            ${showMobileMenu ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+                        `}>
+                            <nav className="p-4 space-y-2 sticky top-24">
+                                {navItems.map((item) => {
+                                    const Icon = item.icon;
+                                    const isActive = activeTab === item.id;
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => { setActiveTab(item.id); setShowMobileMenu(false); }}
+                                            className={`w-full flex items-center gap-4 px-4 py-3 transition-all duration-200 group border-l-4 ${
+                                                isActive 
+                                                ? 'bg-[#c5a059]/10 border-[#c5a059] text-[#c5a059]' 
+                                                : 'border-transparent text-[#8a7f70] hover:text-[#e2d5c3] hover:bg-[#ffffff05]'
+                                            }`}
+                                        >
+                                            <Icon size={20} className={isActive ? 'text-[#c5a059]' : 'group-hover:text-[#e2d5c3]'} />
+                                            <span className="font-lato font-bold tracking-wide uppercase text-sm">{item.label}</span>
+                                        </button>
+                                    );
+                                })}
+                                
+                                <div className="mt-8 border-t border-[#3d342b] pt-6 px-4">
+                                    <h4 className="text-[#5d5244] text-xs font-bold uppercase tracking-widest mb-4">News Ticker</h4>
+                                    <div className="space-y-4">
+                                        <div className="bg-[#231f1b] p-3 border-l-2 border-[#8b0000] hover:bg-[#2c241b] transition-colors cursor-help">
+                                            <p className="text-[#a89f91] text-xs font-merriweather italic">"Strikes continue in Omrybaras manufacturing district. Union leaders demand meeting with PM Castañeda."</p>
+                                        </div>
+                                        <div className="bg-[#231f1b] p-3 border-l-2 border-[#ffb74d] hover:bg-[#2c241b] transition-colors cursor-help">
+                                            <p className="text-[#a89f91] text-xs font-merriweather italic">"G'aleroi troops spotted near the southern mountain pass. Border guard on high alert."</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </nav>
+                        </aside>
+
+                        {/* CONTENT AREA */}
+                        <main className="flex-1 min-h-[80vh]">
+                            
+                            {activeTab === 'overview' && (
+                                <PaperReport title="Republic Overview" date="JAN 12, 1949">
+                                    <div className="grid md:grid-cols-3 gap-8 mb-8 border-b border-[#2c241b] pb-8">
+                                        <div className="col-span-1 flex flex-col items-center justify-center p-4 bg-[#e6e0d4] border border-[#d1c7b7] shadow-inner">
+                                            <img src={FLAG_URL} className="w-full h-auto shadow-md mb-4 border border-black/10" alt="Flag of Lasomby" />
+                                            <span className="font-playfair font-bold text-xl uppercase">Lasomby</span>
+                                        </div>
+                                        <div className="col-span-2 space-y-4">
+                                            <p className="first-letter:text-5xl first-letter:float-left first-letter:mr-3 first-letter:font-playfair first-letter:font-black text-justify text-[#2c241b]">
+                                                The <span className="font-bold">Third Lasombian Republic</span> stands at a crossroads. Emerging from the shadow of the Directorate era, the nation navigates a fragile democracy under the semi-presidential system established by the Omrybaras Accords of 1944.
+                                            </p>
+                                            <p className="text-justify text-[#2c241b]">
+                                                Situated in Southern Merkopa with an extensive coastline along the Sea of Nem, Lasomby serves as a potential regional economic hub, though internal divisions and external pressures threaten its stability.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid md:grid-cols-2 gap-x-12 gap-y-6 text-sm">
+                                        <div>
+                                            <h3 className="font-lato font-black text-[#8b0000] uppercase tracking-widest mb-3 border-b border-[#2c241b] pb-1">National Statistics</h3>
+                                            <ul className="space-y-2">
+                                                <li className="flex justify-between"><span className="text-[#5d5244] font-bold">Capital:</span> <span>Omrybaras (Pop. 780k)</span></li>
+                                                <li className="flex justify-between"><span className="text-[#5d5244] font-bold">Population:</span> <span>18.4 Million</span></li>
+                                                <li className="flex justify-between"><span className="text-[#5d5244] font-bold">GDP:</span> <span>$62.8 Billion</span></li>
+                                                <li className="flex justify-between"><span className="text-[#5d5244] font-bold">Currency:</span> <span>Lasombian Real</span></li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <h3 className="font-lato font-black text-[#8b0000] uppercase tracking-widest mb-3 border-b border-[#2c241b] pb-1">Demographics</h3>
+                                            <div className="space-y-2">
+                                                <div className="w-full bg-[#d1c7b7] h-3 rounded-sm border border-[#5d5244] overflow-hidden flex">
+                                                    <div className="bg-[#2c241b] w-[61%]"></div>
+                                                    <div className="bg-[#c5a059] w-[22%]"></div>
+                                                    <div className="bg-[#8b0000] w-[17%]"></div>
+                                                </div>
+                                                <div className="flex justify-between text-[10px] text-[#5d5244] font-bold uppercase">
+                                                    <span className="flex items-center gap-1"><div className="w-2 h-2 bg-[#2c241b] rounded-full"></div> Lasombian (61%)</span>
+                                                    <span className="flex items-center gap-1"><div className="w-2 h-2 bg-[#c5a059] rounded-full"></div> Mousser (22%)</span>
+                                                    <span className="flex items-center gap-1"><div className="w-2 h-2 bg-[#8b0000] rounded-full"></div> Other (17%)</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-8 pt-6 border-t border-[#d1c7b7]">
+                                         <SimpleLineGraph data={[40, 45, 42, 38, 35]} label="Public Approval (PUR)" />
+                                    </div>
+                                </PaperReport>
+                            )}
+
+                            {activeTab === 'government' && (
+                                <PaperReport title="Executive Cabinet" date="JAN 12, 1949" classification="CONFIDENTIAL">
+                                    <div className="flex flex-wrap justify-center gap-8 mb-8">
+                                        <Portrait name="Maximo Varela" role="President" />
+                                        <Portrait name="Sofia Castañeda" role="Prime Minister" />
+                                    </div>
+
+                                    <div className="prose prose-stone max-w-none">
+                                        <h3 className="font-playfair text-xl font-bold border-b border-[#2c241b] pb-2 mb-4">Political Situation</h3>
+                                        <p>
+                                            The ruling <span className="font-bold text-[#c5a059] bg-[#2c241b] px-1">Republican Union Party (PUR)</span> maintains a tenuous grip on power. While President Varela enjoys the loyalty of the moderate military factions, Prime Minister Castañeda struggles to manage the legislative coalition.
+                                        </p>
+                                        
+                                        <div className="bg-[#e6e0d4] p-6 mt-6 border-l-4 border-[#c5a059] shadow-inner">
+                                            <h4 className="font-bold uppercase text-xs tracking-widest mb-2 text-[#5d5244]">Ruling Ideology</h4>
+                                            <p className="font-bold text-lg">Liberal Conservatism & Miraclist Influences</p>
+                                            <p className="text-sm mt-2 italic text-[#5d5244]">
+                                                "Order with Liberty, Prosperity with Justice."
+                                            </p>
+                                        </div>
+
+                                        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <h4 className="font-bold uppercase text-xs tracking-widest mb-2 text-[#8b0000]">Opposition Forces</h4>
+                                                <ul className="list-disc pl-5 space-y-1 text-sm marker:text-[#8b0000]">
+                                                    <li><span className="font-bold">Democratic Renewal:</span> Progressive liberals demanding land reform.</li>
+                                                    <li><span className="font-bold">Lasombian Socialist Front:</span> Labor unions.</li>
+                                                    <li><span className="font-bold">Traditionalist Party:</span> Monarchist restoration.</li>
+                                                </ul>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold uppercase text-xs tracking-widest mb-2 text-[#8b0000]">State Threats</h4>
+                                                <ul className="list-disc pl-5 space-y-1 text-sm marker:text-[#8b0000]">
+                                                    <li>Sabotage of land reform by aristocracy.</li>
+                                                    <li>Surveillance by secret police.</li>
+                                                    <li>Political violence in provinces.</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </PaperReport>
+                            )}
+                            
+                            {activeTab === 'assembly' && (
+                                <PaperReport title="Legislative Chamber" date="SESSION 49" classification="PUBLIC">
+                                    <div className="text-center max-w-2xl mx-auto">
+                                        <p className="text-sm italic mb-6">"The Grand National Assembly in Omrybaras remains divided. The PUR holds a majority, but relies on Traditionalists for key votes."</p>
+                                        
+                                        {/* Dynamic Parliament Chart */}
+                                        <ParliamentHemicycle parties={PARLIAMENT_DATA} />
+                                        
+                                        <div className="mt-8 text-left bg-[#e6e0d4] p-4 border border-[#d1c7b7]">
+                                            <h4 className="font-bold text-xs uppercase tracking-widest mb-2">Legislative Agenda</h4>
+                                            <ul className="text-sm space-y-2">
+                                                <li className="flex items-center gap-2">
+                                                    <span className="w-2 h-2 bg-[#4caf50] rounded-full"></span>
+                                                    <span>Agricultural Subsidies Act (Passed)</span>
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <span className="w-2 h-2 bg-[#ffb74d] rounded-full"></span>
+                                                    <span>Education Reform Bill (Debating)</span>
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <span className="w-2 h-2 bg-[#e53935] rounded-full"></span>
+                                                    <span>Worker's Rights Amendment (Blocked)</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </PaperReport>
+                            )}
+
+                            {activeTab === 'military' && (
+                                <PaperReport title="Defense Ministry Assessment" date="STRATEGIC REVIEW" classification="SECRET">
+                                    <div className="grid grid-cols-3 gap-4 mb-6 text-center">
+                                        <div className="p-4 border border-[#d1c7b7] bg-[#e6e0d4]">
+                                            <Crosshair className="mx-auto mb-2 text-[#8b0000]" />
+                                            <h3 className="font-bold text-xl">195,000</h3>
+                                            <p className="text-xs uppercase tracking-widest">Army</p>
+                                        </div>
+                                        <div className="p-4 border border-[#d1c7b7] bg-[#e6e0d4]">
+                                            <Anchor className="mx-auto mb-2 text-[#003366]" />
+                                            <h3 className="font-bold text-xl">38,000</h3>
+                                            <p className="text-xs uppercase tracking-widest">Navy</p>
+                                        </div>
+                                         <div className="p-4 border border-[#d1c7b7] bg-[#e6e0d4]">
+                                            <Wind className="mx-auto mb-2 text-[#5d5244]" />
+                                            <h3 className="font-bold text-xl">12,000</h3>
+                                            <p className="text-xs uppercase tracking-widest">Air Force</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <div className="relative pl-8 border-l-2 border-[#c5a059]">
+                                            <h3 className="font-playfair font-bold text-lg text-[#2c241b] mb-1">Ground Forces</h3>
+                                            <p className="text-sm text-[#5d5244] italic mb-2">"Quantity over quality."</p>
+                                            <p className="text-sm">
+                                                12 Infantry Divisions. 2 Mechanized Divisions (Modernizing). 1 Mountain Division (Elite).
+                                            </p>
+                                        </div>
+
+                                        <div className="relative pl-8 border-l-2 border-[#003366]">
+                                            <h3 className="font-playfair font-bold text-lg text-[#2c241b] mb-1">Naval Capabilities</h3>
+                                            <p className="text-sm text-[#5d5244] italic mb-2">"The Pride of the Republic."</p>
+                                            <p className="text-sm">
+                                                6 modern Valgsland-class submarines. 3 Light Cruisers. Vital for trade protection.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </PaperReport>
+                            )}
+
+                            {activeTab === 'economy' && (
+                                <PaperReport title="Economic Outlook" date="FISCAL YEAR 1949">
+                                     <div className="flex flex-col md:flex-row gap-8 items-start">
+                                         <div className="flex-1">
+                                             <h3 className="font-playfair font-bold text-xl mb-4">Production Profile</h3>
+                                             <div className="space-y-3">
+                                                 <div className="flex items-center justify-between text-sm border-b border-[#d1c7b7] pb-1">
+                                                     <span>Textiles & Garments</span>
+                                                     <span className="font-bold text-[#4caf50]">High Output</span>
+                                                 </div>
+                                                 <div className="flex items-center justify-between text-sm border-b border-[#d1c7b7] pb-1">
+                                                     <span>Chromium Mining</span>
+                                                     <span className="font-bold text-[#ffb74d]">Moderate</span>
+                                                 </div>
+                                                 <div className="flex items-center justify-between text-sm border-b border-[#d1c7b7] pb-1">
+                                                     <span>Naval Manufacturing</span>
+                                                     <span className="font-bold text-[#ffb74d]">Subsidized</span>
+                                                 </div>
+                                                  <div className="flex items-center justify-between text-sm border-b border-[#d1c7b7] pb-1">
+                                                     <span>Agriculture</span>
+                                                     <span className="font-bold text-[#e53935]">Struggling</span>
+                                                 </div>
+                                             </div>
+
+                                             <SimpleLineGraph data={[20, 22, 21, 23, 23]} color="#4caf50" label="Industrial Output (Index)" />
+                                         </div>
+
+                                         <div className="w-full md:w-64 bg-[#e6e0d4] p-4 border border-[#d1c7b7] shadow-inner rotate-1">
+                                             <h4 className="font-bold uppercase text-xs tracking-widest mb-4 text-[#5d5244] text-center">Trade Balance</h4>
+                                             <div className="space-y-4">
+                                                 <div>
+                                                     <span className="text-xs font-bold block mb-1">Exports</span>
+                                                     <p className="text-xs leading-tight text-[#5d5244]">Machinery, Chemicals, Naval Vessels, Wine, Chromium.</p>
+                                                 </div>
+                                                 <div>
+                                                     <span className="text-xs font-bold block mb-1">Imports</span>
+                                                     <p className="text-xs leading-tight text-[#5d5244]">Petroleum, Iron Ore, Aviation Tech, Rubber.</p>
+                                                 </div>
+                                             </div>
+                                         </div>
+                                     </div>
+                                     
+                                     <div className="mt-8 bg-[#2c241b] text-[#e6e0d4] p-6 rounded-sm flex items-start gap-4">
+                                         <AlertTriangle className="text-[#ffb74d] shrink-0" />
+                                         <div>
+                                             <h4 className="font-bold text-sm uppercase tracking-wider text-[#ffb74d] mb-1">Critical Warning</h4>
+                                             <p className="text-sm font-lato">
+                                                 Foreign investment is high but volatile. Arcasian investors have paused capital flows. Strike action in Omrybaras threatens banking liquidity.
+                                             </p>
+                                         </div>
+                                     </div>
+                                </PaperReport>
+                            )}
+
+                        </main>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<LasombyApp />);
+    </script>
+</body>
+</html>
