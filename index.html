@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Third Lasombian Republic | Government Terminal</title>
     
+    <!-- SOCIAL / DISCORD EMBED TAGS -->
+    <meta property="og:title" content="The Third Lasombian Republic Archives">
+    <meta property="og:description" content="Official government terminal. View strategic maps, cabinet dossiers, economic reports, and budget allocations for the Third Republic.">
+    <meta property="og:image" content="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Flag_of_the_Republic_of_China_Army_Reserve.svg/2560px-Flag_of_the_Republic_of_China_Army_Reserve.svg.png">
+    <meta property="og:url" content="https://github.com/yourusername/lasomby-archives"> <!-- REPLACE WITH YOUR ACTUAL LINK -->
+    <meta property="og:type" content="website">
+    <meta name="theme-color" content="#c5a059">
+    <meta name="twitter:card" content="summary_large_image">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -18,7 +27,7 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Google Fonts: Playfair (Headers), Lato (UI), Merriweather (Body), Special Elite (Typewriter) -->
+    <!-- Google Fonts -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400&family=Lato:wght@300;400;700;900&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&family=Special+Elite&display=swap');
         
@@ -28,7 +37,6 @@
             --suzerain-brown: #2c241b;
             --suzerain-red: #8b0000;
             --suzerain-paper: #f4f0e6;
-            --suzerain-paper-shadow: rgba(0,0,0,0.4);
         }
 
         body {
@@ -41,7 +49,7 @@
         .bg-wood {
             background-color: #1a1512;
             background-image: 
-                linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.2)),
+                linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.3)),
                 url('https://www.transparenttextures.com/patterns/wood-pattern.png');
             background-attachment: fixed;
         }
@@ -76,6 +84,21 @@
             100% { transform: scale(1) rotate(-12deg); }
         }
 
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+        
+        @keyframes flicker {
+            0% { opacity: 0.97; }
+            5% { opacity: 0.95; }
+            10% { opacity: 0.9; }
+            15% { opacity: 0.95; }
+            20% { opacity: 0.99; }
+            50% { opacity: 0.95; }
+            100% { opacity: 0.98; }
+        }
+
         .animate-report { animation: slideUpFade 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
         .animate-stamp { animation: stamp-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s forwards opacity-0; }
 
@@ -86,44 +109,55 @@
         ::-webkit-scrollbar-thumb:hover { background: #c5a059; }
 
         /* Custom UI Elements */
-        .nav-item-active {
-            background: linear-gradient(90deg, rgba(197, 160, 89, 0.15) 0%, transparent 100%);
-            border-left: 4px solid #c5a059;
-            color: #c5a059;
-        }
-
-        .map-node:hover {
-            filter: drop-shadow(0 0 8px #c5a059);
-            transform: scale(1.1);
-            cursor: pointer;
-        }
-
         .crt-overlay {
             background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
             background-size: 100% 4px;
             pointer-events: none;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 50;
+            animation: flicker 4s infinite;
         }
 
-        /* Color Picker Reset */
-        input[type="color"] {
+        .scan-line {
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 20px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.05), rgba(255,255,255,0));
+            animation: scanline 6s linear infinite;
+            pointer-events: none;
+            z-index: 51;
+        }
+
+        /* Chart Styles */
+        .chart-bar { transition: height 0.5s ease-out; }
+        .chart-bar:hover { fill: #c5a059; }
+        
+        /* Slider Styling */
+        input[type=range] {
             -webkit-appearance: none;
-            border: none;
-            width: 24px;
-            height: 24px;
-            padding: 0;
-            overflow: hidden;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
             border-radius: 50%;
+            background: #c5a059;
+            border: 2px solid #2c241b;
             cursor: pointer;
+            margin-top: -8px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
-        input[type="color"]::-webkit-color-swatch-wrapper {
-            padding: 0;
-        }
-        input[type="color"]::-webkit-color-swatch {
-            border: none;
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #d1c7b7;
+            border-radius: 2px;
         }
     </style>
 </head>
-<body class="bg-wood min-h-screen text-gray-200">
+<body class="bg-wood min-h-screen text-gray-200 overflow-hidden">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -147,12 +181,104 @@
         const Icons = Object.fromEntries(
             ['Landmark', 'Users', 'BookOpen', 'Shield', 'TrendingUp', 'Menu', 'X', 
              'Gavel', 'AlertTriangle', 'Crosshair', 'Anchor', 'Wind', 'PieChart', 
-             'Scroll', 'Map', 'Newspaper', 'ChevronRight', 'Clock', 'Trash2', 'Plus'].map(name => [name, createLucideComponent(name)])
+             'Scroll', 'Map', 'Newspaper', 'ChevronRight', 'Clock', 'Trash2', 'Plus', 'Upload', 'BarChart', 'Target', 'Briefcase', 'Scale'].map(name => [name, createLucideComponent(name)])
         );
 
         const FLAG_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Flag_of_the_Republic_of_China_Army_Reserve.svg/2560px-Flag_of_the_Republic_of_China_Army_Reserve.svg.png";
 
-        // --- COMPONENTS ---
+        // --- CHART COMPONENTS ---
+        
+        const SimpleBarChart = ({ data, height = 150 }) => {
+            const maxVal = Math.max(...data.map(d => d.value));
+            return (
+                <div className="flex items-end justify-between gap-2 h-full w-full pt-4 px-2">
+                    {data.map((d, i) => (
+                        <div key={i} className="flex flex-col items-center flex-1 group">
+                            <div className="relative w-full flex justify-center">
+                                {/* Tooltip */}
+                                <div className="absolute bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity bg-[#1a1816] text-[#e2d5c3] text-[10px] px-2 py-1 border border-[#c5a059] pointer-events-none z-10 whitespace-nowrap">
+                                    {d.label}: {d.value}
+                                </div>
+                                <div 
+                                    className="w-full max-w-[30px] min-w-[15px] bg-[#2c241b] border border-[#5d5244] group-hover:bg-[#c5a059] transition-colors shadow-sm" 
+                                    style={{height: `${(d.value / maxVal) * height}px`}}
+                                ></div>
+                            </div>
+                            <span className="text-[8px] md:text-[9px] font-bold uppercase mt-2 text-[#5d5244] text-center leading-tight">{d.shortLabel || d.label}</span>
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
+        const SimplePieChart = ({ data, size = 120 }) => {
+            const total = data.reduce((acc, d) => acc + d.value, 0);
+            let currentAngle = 0;
+
+            return (
+                <div className="relative flex flex-col md:flex-row items-center justify-center gap-4">
+                    <svg width={size} height={size} viewBox="-1 -1 2 2" style={{transform: 'rotate(-90deg)'}}>
+                        {data.map((d, i) => {
+                            const sliceAngle = (d.value / total) * 2 * Math.PI;
+                            const x1 = Math.cos(currentAngle);
+                            const y1 = Math.sin(currentAngle);
+                            const x2 = Math.cos(currentAngle + sliceAngle);
+                            const y2 = Math.sin(currentAngle + sliceAngle);
+                            const largeArc = sliceAngle > Math.PI ? 1 : 0;
+                            
+                            const pathData = `M 0 0 L ${x1} ${y1} A 1 1 0 ${largeArc} 1 ${x2} ${y2} Z`;
+                            currentAngle += sliceAngle;
+                            
+                            return (
+                                <path 
+                                    key={i} 
+                                    d={pathData} 
+                                    fill={d.color} 
+                                    stroke="#f4f0e6" 
+                                    strokeWidth="0.02"
+                                    className="hover:opacity-80 transition-opacity cursor-pointer"
+                                >
+                                    <title>{d.label}: {d.value}%</title>
+                                </path>
+                            );
+                        })}
+                    </svg>
+                    {/* Legend */}
+                    <div className="flex flex-col justify-center whitespace-nowrap gap-2">
+                         {data.map((d, i) => (
+                             <div key={i} className="flex items-center gap-2">
+                                 <div className="w-3 h-3 rounded-full border border-black/20" style={{backgroundColor: d.color}}></div>
+                                 <span className="text-xs font-bold font-ui text-[#5d5244]">{d.label} <span className="text-[#2c241b] opacity-60">({d.value}%)</span></span>
+                             </div>
+                         ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const BudgetSlider = ({ label, value, onChange, icon: Icon }) => (
+            <div className="mb-4">
+                <div className="flex justify-between items-center mb-1">
+                    <div className="flex items-center gap-2">
+                        <Icon size={14} className="text-[#5d5244]" />
+                        <span className="font-bold text-xs uppercase text-[#2c241b] tracking-wider">{label}</span>
+                    </div>
+                    <span className={`text-xs font-bold ${value > 5 ? 'text-[#4caf50]' : value < 5 ? 'text-[#e53935]' : 'text-[#ffb74d]'}`}>
+                        {value > 5 ? 'INCREASED' : value < 5 ? 'DECREASED' : 'MAINTAINED'}
+                    </span>
+                </div>
+                <input 
+                    type="range" 
+                    min="1" 
+                    max="10" 
+                    value={value} 
+                    onChange={(e) => onChange(parseInt(e.target.value))}
+                    className="w-full h-2 bg-[#d1c7b7] rounded-lg appearance-none cursor-pointer"
+                />
+            </div>
+        );
+
+        // --- UI COMPONENTS ---
 
         const Tooltip = ({ text, children }) => {
             const [show, setShow] = useState(false);
@@ -160,7 +286,7 @@
                 <div className="relative flex items-center" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
                     {children}
                     {show && (
-                        <div className="absolute left-full ml-2 z-50 w-48 bg-[#1a1816] border border-[#c5a059] p-2 shadow-xl text-xs text-[#e2d5c3] font-ui tracking-wide animate-fadeIn pointer-events-none">
+                        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 w-48 bg-[#1a1816] border border-[#c5a059] p-2 shadow-xl text-xs text-[#e2d5c3] font-ui tracking-wide animate-fadeIn pointer-events-none text-center">
                             {text}
                         </div>
                     )}
@@ -170,72 +296,108 @@
 
         const StatItem = ({ icon: Icon, label, value, trend, desc }) => (
             <Tooltip text={desc}>
-                <div className="flex flex-col items-center justify-center px-6 border-r border-[#ffffff10] last:border-0 min-w-[100px] cursor-help transition-colors hover:bg-[#ffffff05] py-2">
+                <div className="flex flex-col items-center justify-center px-4 md:px-6 border-r border-[#ffffff10] last:border-0 min-w-[80px] md:min-w-[100px] cursor-help transition-colors hover:bg-[#ffffff05] py-2">
                     <div className="flex items-center gap-2 mb-1">
-                        <Icon size={18} className="text-[#c5a059]" />
-                        <span className={`font-header font-bold text-xl ${trend === 'positive' ? 'text-[#4caf50]' : trend === 'negative' ? 'text-[#e53935]' : 'text-[#ffb74d]'}`}>
+                        <Icon size={16} className="text-[#c5a059] hidden md:block" />
+                        <span className={`font-header font-bold text-lg md:text-xl ${trend === 'positive' ? 'text-[#4caf50]' : trend === 'negative' ? 'text-[#e53935]' : 'text-[#ffb74d]'}`}>
                             {value}
                         </span>
                     </div>
-                    <span className="text-[9px] uppercase tracking-[0.2em] text-[#8a7f70] font-bold">{label}</span>
+                    <span className="text-[8px] md:text-[9px] uppercase tracking-[0.2em] text-[#8a7f70] font-bold">{label}</span>
                 </div>
             </Tooltip>
         );
 
-        const Portrait = ({ name, role, align = "center" }) => (
-            <div className={`flex flex-col items-${align} mb-6 group cursor-pointer relative`}>
-                <div className="w-40 h-48 bg-[#2c241b] border-[6px] border-[#3d342b] shadow-[0_5px_15px_rgba(0,0,0,0.5)] overflow-hidden relative transition-all duration-300 group-hover:border-[#c5a059] group-hover:-translate-y-1">
-                    <div className="absolute inset-0 bg-cover bg-center grayscale contrast-125 sepia-[.4]" style={{backgroundImage: `url('https://i.pravatar.cc/400?u=${name.replace(' ','')}')`}}></div>
-                    <div className="w-full h-full bg-gradient-to-t from-[#1a1816] via-transparent to-transparent absolute z-10 opacity-60"></div>
+        const Portrait = ({ id, name, role, align = "center", currentImage, onUpload }) => {
+            const fileInputRef = useRef(null);
+
+            const handleClick = () => {
+                fileInputRef.current.click();
+            };
+
+            const handleFileChange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        onUpload(id, reader.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            return (
+                <div className={`flex flex-col items-center md:items-${align} mb-6 group relative w-full md:w-auto`}>
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleFileChange} 
+                        className="hidden" 
+                        accept="image/*"
+                    />
+                    
+                    <div 
+                        onClick={handleClick}
+                        className="w-40 h-48 bg-[#2c241b] border-[6px] border-[#3d342b] shadow-[0_5px_15px_rgba(0,0,0,0.5)] overflow-hidden relative transition-all duration-300 group-hover:border-[#c5a059] group-hover:-translate-y-1 cursor-pointer"
+                    >
+                        <div className="absolute inset-0 bg-cover bg-center grayscale contrast-125 sepia-[.4]" style={{backgroundImage: `url('${currentImage}')`}}></div>
+                        <div className="w-full h-full bg-gradient-to-t from-[#1a1816] via-transparent to-transparent absolute z-10 opacity-60"></div>
+                        
+                        {/* Hover Overlay */}
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Icons.Upload className="text-[#c5a059]" />
+                        </div>
+                    </div>
+                    
+                    <div className={`mt-3 text-center md:text-${align} relative z-20 bg-[#1a1816]/80 px-4 py-2 border-l-2 border-[#c5a059] backdrop-blur-sm pointer-events-none w-full md:w-auto`}>
+                        <h3 className="font-header font-bold text-[#e2d5c3] text-xl leading-none mb-1">{name}</h3>
+                        <p className="font-ui text-[10px] uppercase tracking-widest text-[#c5a059]">{role}</p>
+                    </div>
                 </div>
-                <div className={`mt-3 text-${align} relative z-20 bg-[#1a1816]/80 px-2 py-1 border-l-2 border-[#c5a059] backdrop-blur-sm`}>
-                    <h3 className="font-header font-bold text-[#e2d5c3] text-xl leading-none mb-1">{name}</h3>
-                    <p className="font-ui text-[10px] uppercase tracking-widest text-[#c5a059]">{role}</p>
-                </div>
-            </div>
-        );
+            );
+        };
 
         const PaperReport = ({ title, subtitle, date, classification = "UNCLASSIFIED", children, emblem = true }) => (
-            <div className="animate-report relative mx-auto max-w-4xl perspective-1000">
-                <div className="paper-texture text-[#2c241b] p-8 md:p-16 min-h-[600px] relative z-10 transform transition-transform duration-500 hover:rotate-0">
+            <div className="animate-report relative mx-auto max-w-4xl perspective-1000 mb-20">
+                <div className="paper-texture text-[#2c241b] p-6 md:p-16 min-h-[600px] relative z-10 transform transition-transform duration-500 hover:rotate-0 border border-[#d1c7b7]">
                     
                     {/* Watermark/Bg Decoration */}
-                    {emblem && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-4 border-[#2c241b] rounded-full opacity-[0.03] pointer-events-none flex items-center justify-center">
-                        <div className="w-48 h-48 border-2 border-[#2c241b] rounded-full"></div>
+                    {emblem && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 md:w-64 md:h-64 border-4 border-[#2c241b] rounded-full opacity-[0.03] pointer-events-none flex items-center justify-center">
+                        <div className="w-32 h-32 md:w-48 md:h-48 border-2 border-[#2c241b] rounded-full"></div>
                     </div>}
 
                     {/* Stamp */}
-                    <div className="animate-stamp opacity-0 absolute top-8 right-8 border-[3px] border-[#8b0000] p-2 px-4 rotate-[-12deg] z-20 mix-blend-multiply">
-                        <span className="text-[#8b0000] font-black font-typewriter uppercase tracking-widest text-sm block stamp">{classification}</span>
+                    <div className="animate-stamp opacity-0 absolute top-4 right-4 md:top-8 md:right-8 border-[3px] border-[#8b0000] p-1 px-3 md:p-2 md:px-4 rotate-[-12deg] z-20 mix-blend-multiply">
+                        <span className="text-[#8b0000] font-black font-typewriter uppercase tracking-widest text-[10px] md:text-sm block stamp">{classification}</span>
                     </div>
 
                     {/* Header */}
-                    <div className="border-b-4 double-border border-[#2c241b] pb-6 mb-8 text-center">
+                    <div className="border-b-4 double-border border-[#2c241b] pb-6 mb-8 text-center mt-6 md:mt-0">
                         <div className="flex justify-center items-center gap-2 mb-4 text-[#5d5244] opacity-80">
                             <Icons.Anchor size={16} />
-                            <span className="font-ui text-xs uppercase tracking-[0.3em]">Official State Document</span>
+                            <span className="font-ui text-[10px] md:text-xs uppercase tracking-[0.3em]">Official State Document</span>
                             <Icons.Anchor size={16} />
                         </div>
-                        <h1 className="font-header text-5xl font-black uppercase tracking-tight mb-2 text-[#1a1816]">{title}</h1>
-                        {subtitle && <h2 className="font-header text-xl italic text-[#5d5244]">{subtitle}</h2>}
+                        <h1 className="font-header text-3xl md:text-5xl font-black uppercase tracking-tight mb-2 text-[#1a1816]">{title}</h1>
+                        {subtitle && <h2 className="font-header text-lg md:text-xl italic text-[#5d5244]">{subtitle}</h2>}
                         <div className="mt-4 inline-block bg-[#2c241b] text-[#f4f0e6] px-4 py-1 font-typewriter text-xs tracking-widest">
                             DATE: {date}
                         </div>
                     </div>
 
                     {/* Content */}
-                    <div className="font-body text-lg leading-relaxed text-justify space-y-6">
+                    <div className="font-body text-base md:text-lg leading-relaxed text-justify space-y-6">
                         {children}
                     </div>
 
                     {/* Footer */}
-                    <div className="mt-16 pt-8 border-t border-[#d1c7b7] flex justify-between items-end opacity-60">
-                        <div className="font-typewriter text-xs">
+                    <div className="mt-16 pt-8 border-t border-[#d1c7b7] flex flex-col md:flex-row justify-between items-center md:items-end opacity-60 gap-4">
+                        <div className="font-typewriter text-xs text-center md:text-left">
                             <p>REF: 49-A-121</p>
                             <p>AUTH: MINISTRY OF INFO</p>
                         </div>
-                        <div className="text-right">
-                             <img src={FLAG_URL} className="h-8 w-auto grayscale opacity-50 mb-1 ml-auto" />
+                        <div className="text-center md:text-right">
+                             <img src={FLAG_URL} className="h-8 w-auto grayscale opacity-50 mb-1 mx-auto md:ml-auto" />
                              <p className="font-header text-xs italic">For the Republic</p>
                         </div>
                     </div>
@@ -268,73 +430,39 @@
 
             const totalSeats = parties.reduce((acc, p) => acc + parseInt(p.seats || 0), 0);
 
-            // Generate Seats Logic
             const generateSeats = () => {
-                const seatPoints = [];
                 const rows = 8;
                 const baseRadius = 120;
-                
-                // We calculate roughly how many seats fit in each row to create a nice arch
-                // This is a visual approximation algorithm
-                let seatsAllocated = 0;
-                let currentRow = 0;
-                
-                // Distribute seats from outside in or inside out? usually inside out looks better for filling
-                // But we need to assign them to parties.
-                // First, create ALL seat positions
                 const allPositions = [];
-                
                 for(let r = 0; r < rows; r++) {
                     const radius = baseRadius + (r * 22);
+                    const seatSize = 14; 
                     const arcLength = Math.PI * radius;
-                    const seatSize = 14; // Approximate width including gap
                     const countInRow = Math.floor(arcLength / seatSize);
-                    
                     const angleStep = Math.PI / (countInRow - 1);
-                    
                     for(let s = 0; s < countInRow; s++) {
-                         const angle = Math.PI - (s * angleStep); // Left to Right (180 to 0)
+                         const angle = Math.PI - (s * angleStep);
                          const x = 300 + (radius * Math.cos(angle));
                          const y = 350 - (radius * Math.sin(angle));
                          allPositions.push({ x, y, r });
                     }
                 }
-
-                // Now assign parties to these positions
-                // We need to limit positions to totalSeats
-                // Center the active seats in the available positions if we have more positions than seats?
-                // Or just fill from the start. Let's simple fill.
                 
                 let currentPartyIndex = 0;
                 let seatsInCurrentPartyProcessed = 0;
-                
-                // Take the 'middle' positions to center the parliament
-                // Or just standard fill
                 const usedPositions = allPositions.slice(0, totalSeats);
 
                 return usedPositions.map((pos, i) => {
                     const party = parties[currentPartyIndex];
                     if (!party) return null;
-
                     seatsInCurrentPartyProcessed++;
                     if (seatsInCurrentPartyProcessed > party.seats) {
                         currentPartyIndex++;
                         seatsInCurrentPartyProcessed = 1;
                     }
-                    
                     const actualParty = parties[currentPartyIndex] || parties[parties.length-1];
-
                     return (
-                        <circle 
-                            key={i} 
-                            cx={pos.x} 
-                            cy={pos.y} 
-                            r="5" 
-                            fill={actualParty.color} 
-                            stroke="#2c241b" 
-                            strokeWidth="1"
-                            className="transition-all duration-300 hover:r-8"
-                        >
+                        <circle key={i} cx={pos.x} cy={pos.y} r="5" fill={actualParty.color} stroke="#2c241b" strokeWidth="1" className="transition-all duration-300 hover:r-8">
                             <title>{actualParty.name}</title>
                         </circle>
                     );
@@ -344,19 +472,16 @@
             return (
                 <div className="flex flex-col gap-8">
                     {/* VISUALIZATION */}
-                    <div className="bg-[#e6e0d4] border border-[#d1c7b7] p-4 flex flex-col items-center shadow-inner rounded-sm">
+                    <div className="bg-[#e6e0d4] border border-[#d1c7b7] p-4 flex flex-col items-center shadow-inner rounded-sm overflow-hidden">
                         <h4 className="font-header text-xl font-bold mb-2">Chamber Composition</h4>
                         <div className="relative w-full max-w-[600px] aspect-[5/3]">
                             <svg viewBox="0 0 600 400" className="w-full h-full">
-                                {/* Podium */}
                                 <rect x="270" y="360" width="60" height="30" fill="#4a4036" />
                                 <path d="M260,390 L340,390 L330,360 L270,360 Z" fill="#2c241b" />
                                 <g>{generateSeats()}</g>
                             </svg>
                             <div className="absolute bottom-4 left-0 w-full text-center">
-                                <span className="bg-[#2c241b] text-[#c5a059] px-3 py-1 font-bold rounded text-sm shadow-md">
-                                    Total Seats: {totalSeats}
-                                </span>
+                                <span className="bg-[#2c241b] text-[#c5a059] px-3 py-1 font-bold rounded text-sm shadow-md">Total Seats: {totalSeats}</span>
                             </div>
                         </div>
                     </div>
@@ -369,36 +494,20 @@
                                 <Icons.Plus size={14} /> Add Faction
                             </button>
                         </div>
-
                         <div className="space-y-2">
                             {parties.map((party, idx) => (
-                                <div key={party.id} className="flex items-center gap-2 bg-[#ffffff10] p-2 rounded border border-[#d1c7b7] hover:border-[#c5a059] transition-colors">
-                                    <input 
-                                        type="color" 
-                                        value={party.color} 
-                                        onChange={(e) => handleUpdate(idx, 'color', e.target.value)}
-                                        className="w-8 h-8 rounded cursor-pointer border-2 border-[#2c241b]"
-                                        title="Party Color"
-                                    />
-                                    <input 
-                                        type="text" 
-                                        value={party.name} 
-                                        onChange={(e) => handleUpdate(idx, 'name', e.target.value)}
-                                        className="flex-1 bg-transparent border-b border-[#5d5244] text-[#2c241b] font-bold text-sm focus:outline-none focus:border-[#c5a059] px-1 font-ui"
-                                        placeholder="Party Name"
-                                    />
-                                    <div className="flex items-center gap-1">
-                                        <span className="text-[10px] uppercase font-bold text-[#5d5244]">Seats:</span>
-                                        <input 
-                                            type="number" 
-                                            value={party.seats} 
-                                            onChange={(e) => handleUpdate(idx, 'seats', parseInt(e.target.value) || 0)}
-                                            className="w-16 bg-[#f4f0e6] border border-[#d1c7b7] text-[#2c241b] text-center font-bold text-sm rounded focus:outline-none focus:border-[#c5a059]"
-                                        />
+                                <div key={party.id} className="flex flex-col md:flex-row items-start md:items-center gap-2 bg-[#ffffff10] p-2 rounded border border-[#d1c7b7] hover:border-[#c5a059] transition-colors">
+                                    <div className="flex items-center gap-2 w-full md:w-auto">
+                                        <input type="color" value={party.color} onChange={(e) => handleUpdate(idx, 'color', e.target.value)} className="w-8 h-8 rounded cursor-pointer border-2 border-[#2c241b] shrink-0" />
+                                        <input type="text" value={party.name} onChange={(e) => handleUpdate(idx, 'name', e.target.value)} className="flex-1 bg-transparent border-b border-[#5d5244] text-[#2c241b] font-bold text-sm focus:outline-none focus:border-[#c5a059] px-1 font-ui" placeholder="Party Name" />
                                     </div>
-                                    <button onClick={() => removeParty(idx)} className="text-[#e53935] hover:text-[#b71c1c] p-1" title="Remove Party">
-                                        <Icons.Trash2 size={16} />
-                                    </button>
+                                    <div className="flex items-center gap-2 w-full md:w-auto justify-between">
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-[10px] uppercase font-bold text-[#5d5244]">Seats:</span>
+                                            <input type="number" value={party.seats} onChange={(e) => handleUpdate(idx, 'seats', parseInt(e.target.value) || 0)} className="w-16 bg-[#f4f0e6] border border-[#d1c7b7] text-[#2c241b] text-center font-bold text-sm rounded focus:outline-none focus:border-[#c5a059]" />
+                                        </div>
+                                        <button onClick={() => removeParty(idx)} className="text-[#e53935] hover:text-[#b71c1c] p-1"><Icons.Trash2 size={16} /></button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -407,7 +516,50 @@
             );
         };
 
-        // --- CUSTOM MAP COMPONENT ---
+        const InfoCard = ({ title, children, type = "neutral" }) => {
+            const colors = {
+                neutral: "border-[#d1c7b7] bg-[#e6e0d4]",
+                danger: "border-[#e53935] bg-[#ffebee]",
+                success: "border-[#4caf50] bg-[#e8f5e9]",
+                gold: "border-[#c5a059] bg-[#fff8e1]"
+            };
+            return (
+                <div className={`p-4 border-l-4 shadow-sm ${colors[type]} mb-4 h-full`}>
+                    <h4 className="font-bold uppercase text-xs tracking-widest mb-2 opacity-70 font-ui">{title}</h4>
+                    <div className="text-sm font-body">{children}</div>
+                </div>
+            );
+        };
+
+        const NewsTicker = () => {
+            const news = [
+                "Strikes continue in Omrybaras manufacturing district...",
+                "Arcasian investors pause capital flows due to instability...",
+                "President Varela announces new Agricultural Subsidies Act...",
+                "G'aleroi troops spotted near the southern mountain pass..."
+            ];
+            const [index, setIndex] = useState(0);
+
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    setIndex(prev => (prev + 1) % news.length);
+                }, 5000);
+                return () => clearInterval(interval);
+            }, []);
+
+            return (
+                <div className="bg-[#141210] border-t border-[#3d342b] py-2 px-4 flex items-center gap-4 overflow-hidden z-50 relative">
+                    <span className="text-[#c5a059] font-bold text-xs uppercase tracking-widest shrink-0 flex items-center gap-2">
+                        <div className="w-2 h-2 bg-[#e53935] rounded-full animate-pulse"></div>
+                        Breaking News
+                    </span>
+                    <div className="font-typewriter text-[#a89f91] text-xs whitespace-nowrap animate-pulse">
+                        {news[index]} <span className="text-[#5d5244] mx-2">///</span>
+                    </div>
+                </div>
+            );
+        }
+
         const StrategicMap = () => (
             <div className="relative w-full aspect-[16/9] bg-[#b0a995] overflow-hidden border-4 border-[#4a4036] shadow-2xl group">
                 {/* Map Texture */}
@@ -460,7 +612,7 @@
                 </svg>
 
                 {/* Map Legend Overlay */}
-                <div className="absolute bottom-4 left-4 bg-[#1a1816]/90 p-3 border border-[#c5a059] backdrop-blur-sm">
+                <div className="absolute bottom-4 left-4 bg-[#1a1816]/90 p-3 border border-[#c5a059] backdrop-blur-sm hidden md:block">
                     <h4 className="text-[#c5a059] font-header text-sm uppercase mb-2 border-b border-[#c5a059]/30 pb-1">Strategic Overview</h4>
                     <div className="space-y-1">
                         <div className="flex items-center gap-2 text-[10px] text-[#e2d5c3] font-ui uppercase"><div className="w-2 h-2 rounded-full bg-[#c5a059] border border-black"></div> Capital District</div>
@@ -471,58 +623,36 @@
             </div>
         );
 
-        // --- SUB-COMPONENTS ---
-
-        const InfoCard = ({ title, children, type = "neutral" }) => {
-            const colors = {
-                neutral: "border-[#d1c7b7] bg-[#e6e0d4]",
-                danger: "border-[#e53935] bg-[#ffebee]",
-                success: "border-[#4caf50] bg-[#e8f5e9]",
-                gold: "border-[#c5a059] bg-[#fff8e1]"
-            };
-            return (
-                <div className={`p-4 border-l-4 shadow-sm ${colors[type]} mb-4`}>
-                    <h4 className="font-bold uppercase text-xs tracking-widest mb-2 opacity-70 font-ui">{title}</h4>
-                    <div className="text-sm font-body">{children}</div>
-                </div>
-            );
-        };
-
-        const NewsTicker = () => {
-            const news = [
-                "Strikes continue in Omrybaras manufacturing district...",
-                "Arcasian investors pause capital flows due to instability...",
-                "President Varela announces new Agricultural Subsidies Act...",
-                "G'aleroi troops spotted near the southern mountain pass..."
-            ];
-            const [index, setIndex] = useState(0);
-
-            useEffect(() => {
-                const interval = setInterval(() => {
-                    setIndex(prev => (prev + 1) % news.length);
-                }, 5000);
-                return () => clearInterval(interval);
-            }, []);
-
-            return (
-                <div className="bg-[#141210] border-t border-[#3d342b] py-2 px-4 flex items-center gap-4 overflow-hidden">
-                    <span className="text-[#c5a059] font-bold text-xs uppercase tracking-widest shrink-0 flex items-center gap-2">
-                        <div className="w-2 h-2 bg-[#e53935] rounded-full animate-pulse"></div>
-                        Breaking News
-                    </span>
-                    <div className="font-typewriter text-[#a89f91] text-xs whitespace-nowrap animate-pulse">
-                        {news[index]} <span className="text-[#5d5244] mx-2">///</span>
-                    </div>
-                </div>
-            );
-        }
-
         // --- MAIN APP ---
 
         function LasombyApp() {
             const [activeTab, setActiveTab] = useState('overview');
             const [showMobileMenu, setShowMobileMenu] = useState(false);
-            // Turn counter removed as requested
+            
+            // Image States
+            const [images, setImages] = useState({
+                president: "https://i.pravatar.cc/400?u=MaximoVarela",
+                pm: "https://i.pravatar.cc/400?u=Sofia"
+            });
+
+            // Budget States
+            const [budget, setBudget] = useState({
+                health: 5,
+                education: 5,
+                military: 7,
+                law: 4
+            });
+
+            const totalBudgetImpact = useMemo(() => {
+                const totalSpending = budget.health + budget.education + budget.military + budget.law;
+                // Base is 0, start at -2 deficit. Each point above 5 costs 1 budget. Each point below saves 1.
+                const baseline = 20; // 5 * 4
+                return (baseline - totalSpending) - 2; 
+            }, [budget]);
+
+            const handleImageUpload = (id, dataUrl) => {
+                setImages(prev => ({ ...prev, [id]: dataUrl }));
+            };
 
             const PARLIAMENT_INITIAL = [
                 { id: 'lsf', name: 'Lasombian Socialist Front', seats: 35, color: '#8b0000', desc: "Advocating worker control." }, 
@@ -546,8 +676,8 @@
                         </div>
                         {activeTab === id && <Icons.ChevronRight size={14} className="text-[#c5a059]" />}
                     </div>
-                    {/* Hover Description (Like tooltips in game) */}
-                    <div className="h-0 overflow-hidden group-hover:h-auto group-hover:mt-2 transition-all duration-300">
+                    {/* Hover Description */}
+                    <div className="h-0 overflow-hidden group-hover:h-auto group-hover:mt-2 transition-all duration-300 hidden md:block">
                         <p className="text-[10px] text-[#5d5244] font-ui italic pl-9">{desc}</p>
                     </div>
                 </button>
@@ -558,18 +688,22 @@
                     
                     {/* LEFT SIDEBAR (Navigation) */}
                     <aside className={`
-                        fixed inset-y-0 left-0 z-50 w-72 bg-[#1a1816] border-r border-[#3d342b] flex flex-col shadow-2xl transform transition-transform duration-300 md:relative md:translate-x-0
+                        fixed inset-y-0 left-0 z-[60] w-72 bg-[#1a1816] border-r border-[#3d342b] flex flex-col shadow-2xl transform transition-transform duration-300 md:relative md:translate-x-0
                         ${showMobileMenu ? 'translate-x-0' : '-translate-x-full'}
                     `}>
                         {/* Logo Area */}
-                        <div className="p-8 border-b border-[#3d342b] bg-[#141210]">
-                            <div className="flex items-center gap-4 mb-2">
-                                <img src={FLAG_URL} alt="Flag" className="h-12 w-auto shadow-lg" />
+                        <div className="p-6 md:p-8 border-b border-[#3d342b] bg-[#141210] flex justify-between items-center">
+                            <div className="flex items-center gap-4">
+                                <img src={FLAG_URL} alt="Flag" className="h-10 md:h-12 w-auto shadow-lg" />
                                 <div>
-                                    <h1 className="font-header font-bold text-2xl text-[#e2d5c3] leading-none tracking-wide">LASOMBY</h1>
-                                    <span className="text-[9px] text-[#c5a059] uppercase tracking-[0.2em] block mt-1">Third Republic</span>
+                                    <h1 className="font-header font-bold text-xl md:text-2xl text-[#e2d5c3] leading-none tracking-wide">LASOMBY</h1>
+                                    <span className="text-[8px] md:text-[9px] text-[#c5a059] uppercase tracking-[0.2em] block mt-1">Third Republic</span>
                                 </div>
                             </div>
+                            {/* Mobile Close Button */}
+                            <button onClick={() => setShowMobileMenu(false)} className="md:hidden text-[#c5a059]">
+                                <Icons.X size={24} />
+                            </button>
                         </div>
 
                         {/* Navigation Links */}
@@ -586,7 +720,7 @@
                         <div className="p-6 bg-[#141210] border-t border-[#3d342b]">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-[#2c241b] border border-[#c5a059] overflow-hidden">
-                                    <img src="https://i.pravatar.cc/150?u=MaximoVarela" className="w-full h-full object-cover grayscale sepia" />
+                                    <img src={images.president} className="w-full h-full object-cover grayscale sepia" />
                                 </div>
                                 <div>
                                     <p className="text-[#e2d5c3] font-header font-bold text-sm">President Varela</p>
@@ -600,30 +734,32 @@
                     <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
                         
                         {/* TOP BAR (Stats) */}
-                        <header className="h-20 bg-[#1a1816]/95 backdrop-blur border-b border-[#3d342b] flex items-center justify-between px-8 z-40 shadow-lg">
+                        <header className="h-16 md:h-20 bg-[#1a1816]/95 backdrop-blur border-b border-[#3d342b] flex items-center justify-between px-4 md:px-8 z-40 shadow-lg relative shrink-0">
                             <div className="flex items-center gap-4 md:hidden">
                                 <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="text-[#c5a059]">
                                     <Icons.Menu />
                                 </button>
+                                <span className="font-header text-[#c5a059] font-bold text-lg">1949</span>
                             </div>
 
                             <div className="hidden md:flex items-center h-full divide-x divide-[#ffffff10]">
-                                <StatItem icon={Icons.Landmark} label="Budget" value="-2" trend="negative" desc="Government funds available for spending." />
+                                <StatItem icon={Icons.Landmark} label="Budget" value={totalBudgetImpact} trend={totalBudgetImpact >= 0 ? 'positive' : 'negative'} desc="Government funds available for spending." />
                                 <StatItem icon={Icons.TrendingUp} label="Economy" value="Stagnant" trend="neutral" desc="Overall health of the national economy." />
                                 <StatItem icon={Icons.Users} label="Welfare" value="Low" trend="negative" desc="Standard of living and public services." />
                                 <StatItem icon={Icons.Shield} label="Order" value="Medium" trend="neutral" desc="Internal stability and crime rates." />
                             </div>
 
                             <div className="flex flex-col items-end justify-center h-full pl-6 border-l border-[#ffffff10]">
-                                <span className="font-header font-bold text-3xl text-[#c5a059]">1949</span>
+                                <span className="font-header font-bold text-xl md:text-3xl text-[#c5a059] hidden md:block">1949</span>
                                 <span className="text-[9px] text-[#8a7f70] uppercase tracking-widest font-bold">Term I • January</span>
                             </div>
                         </header>
 
                         {/* CONTENT SCROLLABLE AREA */}
-                        <main className="flex-1 overflow-y-auto p-4 md:p-10 relative">
+                        <main className="flex-1 overflow-y-auto p-2 md:p-10 relative">
                             {/* CRT/Scanline Overlay Effect */}
-                            <div className="fixed inset-0 crt-overlay pointer-events-none z-50"></div>
+                            <div className="crt-overlay"></div>
+                            <div className="scan-line"></div>
 
                             {activeTab === 'overview' && (
                                 <PaperReport title="Republic Overview" subtitle="Strategic Assessment & Demographics" date="JAN 12, 1949">
@@ -639,12 +775,9 @@
                                         <p className="mt-4">
                                             Situated in Southern Merkopa with an extensive coastline along the Sea of Nem, Lasomby serves as a potential regional economic hub, though internal divisions and external pressures threaten its stability.
                                         </p>
-                                        <p className="mt-4">
-                                            Population metrics indicate rapid urbanization in the coastal provinces, while the agrarian interior remains largely underdeveloped. Tensions persist between the Lasombian majority and the Mousser-Lasombian elite.
-                                        </p>
                                     </div>
 
-                                    <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                                         <InfoCard title="National Statistics" type="gold">
                                             <ul className="space-y-2">
                                                 <li className="flex justify-between border-b border-[#c5a059]/30 pb-1"><span>Capital</span> <span className="font-bold">Omrybaras (780k)</span></li>
@@ -654,36 +787,46 @@
                                             </ul>
                                         </InfoCard>
                                         
-                                        <InfoCard title="Demographics" type="neutral">
-                                             <div className="space-y-4 pt-2">
-                                                <div>
-                                                    <div className="flex justify-between text-xs uppercase font-bold mb-1"><span>Lasombian</span> <span>61%</span></div>
-                                                    <div className="w-full bg-[#d1c7b7] h-2"><div className="bg-[#2c241b] h-2 w-[61%]"></div></div>
-                                                </div>
-                                                <div>
-                                                    <div className="flex justify-between text-xs uppercase font-bold mb-1"><span>Mousser</span> <span>22%</span></div>
-                                                    <div className="w-full bg-[#d1c7b7] h-2"><div className="bg-[#c5a059] h-2 w-[22%]"></div></div>
-                                                </div>
-                                                <div>
-                                                    <div className="flex justify-between text-xs uppercase font-bold mb-1"><span>Other</span> <span>17%</span></div>
-                                                    <div className="w-full bg-[#d1c7b7] h-2"><div className="bg-[#8b0000] h-2 w-[17%]"></div></div>
-                                                </div>
-                                            </div>
-                                        </InfoCard>
+                                        <div className="bg-[#e6e0d4] p-6 border border-[#d1c7b7] shadow-sm">
+                                            <h4 className="font-bold uppercase text-xs tracking-widest mb-4 opacity-70 font-ui text-center">Ethnic Composition</h4>
+                                            <SimplePieChart 
+                                                data={[
+                                                    { label: 'Lasombian', value: 61, color: '#2c241b' },
+                                                    { label: 'Mousser', value: 22, color: '#c5a059' },
+                                                    { label: 'Other', value: 17, color: '#8b0000' }
+                                                ]} 
+                                            />
+                                        </div>
                                     </div>
                                 </PaperReport>
                             )}
 
                             {activeTab === 'government' && (
                                 <PaperReport title="The Cabinet" subtitle="Executive Branch & Political Forces" date="CONFIDENTIAL" classification="SECRET">
-                                    <div className="flex flex-wrap justify-center gap-12 mb-12">
-                                        <Portrait name="Maximo Varela" role="President" />
-                                        <Portrait name="Sofia Castañeda" role="Prime Minister" />
+                                    <div className="flex flex-col md:flex-row justify-center items-center gap-12 mb-12">
+                                        <Portrait 
+                                            id="president"
+                                            name="Maximo Varela" 
+                                            role="President" 
+                                            currentImage={images.president}
+                                            onUpload={handleImageUpload}
+                                        />
+                                        <Portrait 
+                                            id="pm"
+                                            name="Sofia Castañeda" 
+                                            role="Prime Minister" 
+                                            currentImage={images.pm}
+                                            onUpload={handleImageUpload}
+                                        />
+                                    </div>
+
+                                    <div className="text-center font-ui text-xs text-[#5d5244] italic mb-8">
+                                        * Click portraits to upload custom identification files.
                                     </div>
 
                                     <h3 className="font-header font-bold text-2xl border-b-2 border-[#2c241b] pb-2 mb-6">Political Situation</h3>
                                     
-                                    <div className="bg-[#e6e0d4] p-8 border border-[#d1c7b7] shadow-inner relative overflow-hidden">
+                                    <div className="bg-[#e6e0d4] p-6 md:p-8 border border-[#d1c7b7] shadow-inner relative overflow-hidden">
                                         <div className="absolute top-0 right-0 p-4 opacity-10"><Icons.Landmark size={120}/></div>
                                         <h4 className="font-bold text-[#c5a059] uppercase tracking-widest mb-4 bg-[#2c241b] inline-block px-2 py-1 text-xs">Ruling Ideology</h4>
                                         <p className="font-header text-3xl font-bold text-[#2c241b] mb-2">Liberal Conservatism</p>
@@ -757,51 +900,55 @@
 
                             {activeTab === 'military' && (
                                 <PaperReport title="Defense Assessment" subtitle="Ministry of Defense Strategic Review" date="TOP SECRET" classification="EYES ONLY">
-                                    <div className="grid grid-cols-3 gap-2 mb-8 border-b-2 border-[#2c241b] pb-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-8 border-b-2 border-[#2c241b] pb-8">
                                         <div className="text-center p-4">
                                             <h2 className="font-header text-4xl font-black text-[#2c241b]">195k</h2>
                                             <p className="text-xs uppercase tracking-widest font-bold text-[#5d5244] mt-1">Army Personnel</p>
                                         </div>
-                                        <div className="text-center p-4 border-l border-[#d1c7b7]">
+                                        <div className="text-center p-4 border-l-0 md:border-l border-t md:border-t-0 border-[#d1c7b7]">
                                             <h2 className="font-header text-4xl font-black text-[#003366]">38k</h2>
                                             <p className="text-xs uppercase tracking-widest font-bold text-[#5d5244] mt-1">Navy Personnel</p>
                                         </div>
-                                        <div className="text-center p-4 border-l border-[#d1c7b7]">
+                                        <div className="text-center p-4 border-l-0 md:border-l border-t md:border-t-0 border-[#d1c7b7]">
                                             <h2 className="font-header text-4xl font-black text-[#8b0000]">12k</h2>
                                             <p className="text-xs uppercase tracking-widest font-bold text-[#5d5244] mt-1">Air Force</p>
                                         </div>
                                     </div>
 
+                                    <div className="bg-[#e6e0d4] p-4 border border-[#d1c7b7] mb-8">
+                                        <h4 className="font-bold uppercase text-xs tracking-widest mb-4 font-ui">Unit Breakdown</h4>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                                            <div className="p-2 border border-[#d1c7b7] bg-[#f4f0e6]">
+                                                <Icons.Users size={20} className="mx-auto mb-1 text-[#5d5244]" />
+                                                <span className="font-bold text-lg block">12</span>
+                                                <span className="text-[10px] uppercase">Infantry Div.</span>
+                                            </div>
+                                            <div className="p-2 border border-[#d1c7b7] bg-[#f4f0e6]">
+                                                <Icons.Crosshair size={20} className="mx-auto mb-1 text-[#8b0000]" />
+                                                <span className="font-bold text-lg block">2</span>
+                                                <span className="text-[10px] uppercase">Mech. Div.</span>
+                                            </div>
+                                            <div className="p-2 border border-[#d1c7b7] bg-[#f4f0e6]">
+                                                <Icons.Anchor size={20} className="mx-auto mb-1 text-[#003366]" />
+                                                <span className="font-bold text-lg block">12</span>
+                                                <span className="text-[10px] uppercase">Submarines</span>
+                                            </div>
+                                            <div className="p-2 border border-[#d1c7b7] bg-[#f4f0e6]">
+                                                <Icons.Wind size={20} className="mx-auto mb-1 text-[#5d5244]" />
+                                                <span className="font-bold text-lg block">180</span>
+                                                <span className="text-[10px] uppercase">Aircraft</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div className="space-y-8">
                                         <div className="flex gap-4">
-                                            <div className="shrink-0 mt-1"><Icons.Crosshair className="text-[#c5a059]" /></div>
+                                            <div className="shrink-0 mt-1"><Icons.Target className="text-[#c5a059]" /></div>
                                             <div>
-                                                <h3 className="font-header font-bold text-lg uppercase tracking-wide">Ground Forces</h3>
-                                                <p className="font-typewriter text-xs mb-2 text-[#5d5244]">STATUS: MIXED QUALITY</p>
+                                                <h3 className="font-header font-bold text-lg uppercase tracking-wide">Strategic Posture</h3>
+                                                <p className="font-typewriter text-xs mb-2 text-[#5d5244]">DEFENSIVE / DETERRENCE</p>
                                                 <p className="text-sm">
-                                                    Comprised of 12 Infantry Divisions of variable quality. Two Mechanized Divisions (modernized 1947) suffer from maintenance issues. The single Mountain Division remains elite, guarding the G'aleroi passes.
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex gap-4">
-                                            <div className="shrink-0 mt-1"><Icons.Anchor className="text-[#003366]" /></div>
-                                            <div>
-                                                <h3 className="font-header font-bold text-lg uppercase tracking-wide">Naval Capabilities</h3>
-                                                <p className="font-typewriter text-xs mb-2 text-[#5d5244]">STATUS: MODERNIZING - "PRIDE OF THE REPUBLIC"</p>
-                                                <p className="text-sm">
-                                                    Strategic priority. 6 modern <span className="font-bold text-[#8b0000]">Valgsland-class submarines</span> provide genuine deterrent. 3 aging Light Cruisers patrol trade routes. Funding expansion has drawn criticism from social welfare advocates.
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex gap-4">
-                                            <div className="shrink-0 mt-1"><Icons.Wind className="text-[#5d5244]" /></div>
-                                            <div>
-                                                <h3 className="font-header font-bold text-lg uppercase tracking-wide">Air Force</h3>
-                                                <p className="font-typewriter text-xs mb-2 text-[#5d5244]">STATUS: UNDERDEVELOPED</p>
-                                                <p className="text-sm">
-                                                    Independent since 1946. 180 aircraft total, primarily fighters and light bombers. Severe shortage of mechanics and airfields limits operational capacity to 50% in crisis scenarios.
+                                                    Current doctrine relies on the elite Mountain Division to hold the G'aleroi passes while Mechanized Divisions act as a rapid reaction force. Naval assets prioritize trade route protection against piracy and foreign interdiction.
                                                 </p>
                                             </div>
                                         </div>
@@ -811,43 +958,119 @@
 
                             {activeTab === 'economy' && (
                                 <PaperReport title="Economic Outlook" subtitle="Fiscal Year 1949" date="JANUARY REPORT">
-                                    <div className="flex flex-col md:flex-row gap-8 mb-8">
-                                        <div className="flex-1">
-                                            <h3 className="font-header font-bold text-xl mb-4 text-[#4caf50]">Production Profile</h3>
-                                            <div className="space-y-3 font-typewriter text-sm">
-                                                 <div className="flex justify-between border-b border-[#d1c7b7] border-dashed pb-1">
-                                                     <span>TEXTILES & GARMENTS</span>
-                                                     <span className="font-bold text-[#4caf50]">HIGH OUTPUT</span>
-                                                 </div>
-                                                 <div className="flex justify-between border-b border-[#d1c7b7] border-dashed pb-1">
-                                                     <span>CHROMIUM MINING</span>
-                                                     <span className="font-bold text-[#ffb74d]">STABLE</span>
-                                                 </div>
-                                                 <div className="flex justify-between border-b border-[#d1c7b7] border-dashed pb-1">
-                                                     <span>NAVAL MANUFACTURING</span>
-                                                     <span className="font-bold text-[#ffb74d]">SUBSIDIZED</span>
-                                                 </div>
-                                                  <div className="flex justify-between border-b border-[#d1c7b7] border-dashed pb-1">
-                                                     <span>AGRICULTURE</span>
-                                                     <span className="font-bold text-[#e53935]">CRITICAL</span>
-                                                 </div>
-                                            </div>
-                                        </div>
-                                        <div className="w-full md:w-1/3 bg-[#e6e0d4] p-4 border border-[#d1c7b7] shadow-lg rotate-1">
-                                            <h4 className="font-bold uppercase text-xs tracking-widest mb-2 text-center text-[#5d5244]">Trade Balance</h4>
-                                            <div className="text-xs space-y-4">
-                                                <div>
-                                                    <span className="font-bold block mb-1">EXPORTS:</span>
-                                                    Machinery, Chemicals, Wine, Chromium.
+                                    <div className="flex flex-col gap-8 mb-8">
+                                        {/* Mobile Optimized: Stack Charts vertically on small screens */}
+                                        <div className="flex flex-col md:flex-row gap-8">
+                                            <div className="flex-1">
+                                                <h3 className="font-header font-bold text-xl mb-4 text-[#4caf50]">Production Profile</h3>
+                                                <div className="bg-[#fcfbf9] p-4 border border-[#d1c7b7] rounded-sm shadow-inner">
+                                                    <SimpleBarChart 
+                                                        data={[
+                                                            { label: "Textiles", shortLabel: "TEXTILES", value: 85 },
+                                                            { label: "Mining", shortLabel: "MINING", value: 65 },
+                                                            { label: "Naval", shortLabel: "NAVAL", value: 45 },
+                                                            { label: "Farming", shortLabel: "FARMING", value: 30 }
+                                                        ]} 
+                                                        height={180}
+                                                    />
                                                 </div>
-                                                <div>
-                                                    <span className="font-bold block mb-1">IMPORTS:</span>
-                                                    Petroleum, Iron Ore, Aviation Tech.
+                                                <div className="mt-6 space-y-3 font-typewriter text-sm">
+                                                     <div className="flex justify-between border-b border-[#d1c7b7] border-dashed pb-1">
+                                                         <span>TEXTILES & GARMENTS</span>
+                                                         <span className="font-bold text-[#4caf50]">HIGH OUTPUT</span>
+                                                     </div>
+                                                     <div className="flex justify-between border-b border-[#d1c7b7] border-dashed pb-1">
+                                                         <span>CHROMIUM MINING</span>
+                                                         <span className="font-bold text-[#ffb74d]">STABLE</span>
+                                                     </div>
+                                                      <div className="flex justify-between border-b border-[#d1c7b7] border-dashed pb-1">
+                                                         <span>AGRICULTURE</span>
+                                                         <span className="font-bold text-[#e53935]">CRITICAL</span>
+                                                     </div>
+                                                </div>
+                                            </div>
+                                            <div className="w-full md:w-1/3 bg-[#e6e0d4] p-6 border border-[#d1c7b7] shadow-lg md:rotate-1 flex flex-col justify-between">
+                                                <h4 className="font-bold uppercase text-xs tracking-widest mb-4 text-center text-[#5d5244] border-b border-[#c5a059] pb-2">Trade Balance</h4>
+                                                
+                                                <div className="text-xs space-y-4 mb-4">
+                                                    <div>
+                                                        <span className="font-bold block mb-1 uppercase text-[#2c241b]">Exports:</span>
+                                                        <p className="font-serif italic leading-tight">Machinery, Chemicals, Wine, Chromium.</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-bold block mb-1 uppercase text-[#2c241b]">Imports:</span>
+                                                        <p className="font-serif italic leading-tight">Petroleum, Iron Ore, Aviation Tech.</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="pt-4 border-t border-[#d1c7b7] flex justify-center">
+                                                    <SimplePieChart 
+                                                        size={100}
+                                                        data={[
+                                                            { label: 'Export', value: 45, color: '#4caf50' },
+                                                            { label: 'Import', value: 55, color: '#e53935' }
+                                                        ]} 
+                                                    />
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                     
+                                    {/* NEW FEATURE: BUDGET ALLOCATION SLIDERS */}
+                                    <div className="bg-[#e6e0d4] p-6 border-l-4 border-[#c5a059] shadow-md mb-8">
+                                        <h3 className="font-header font-bold text-xl mb-4 text-[#2c241b] border-b border-[#c5a059] pb-2">Ministry Allocation</h3>
+                                        <p className="text-xs font-ui mb-4 text-[#5d5244]">Adjust funding levels. Changes impact the national budget immediately.</p>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+                                            <BudgetSlider 
+                                                label="Health" 
+                                                value={budget.health} 
+                                                onChange={(v) => setBudget({...budget, health: v})}
+                                                icon={Icons.Plus}
+                                            />
+                                            <BudgetSlider 
+                                                label="Education" 
+                                                value={budget.education} 
+                                                onChange={(v) => setBudget({...budget, education: v})}
+                                                icon={Icons.BookOpen}
+                                            />
+                                            <BudgetSlider 
+                                                label="Military" 
+                                                value={budget.military} 
+                                                onChange={(v) => setBudget({...budget, military: v})}
+                                                icon={Icons.Shield}
+                                            />
+                                            <BudgetSlider 
+                                                label="Law & Justice" 
+                                                value={budget.law} 
+                                                onChange={(v) => setBudget({...budget, law: v})}
+                                                icon={Icons.Scale}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="mb-8">
+                                        <h4 className="font-header font-bold text-lg mb-2">Budget Trend (5 Year)</h4>
+                                        <div className="h-32 flex items-end justify-between gap-1 border-b border-[#2c241b] pb-1 px-2 relative">
+                                            {/* Grid lines */}
+                                            <div className="absolute inset-0 w-full h-full pointer-events-none flex flex-col justify-between opacity-10">
+                                                <div className="border-b border-black"></div>
+                                                <div className="border-b border-black"></div>
+                                                <div className="border-b border-black"></div>
+                                            </div>
+                                            {[-1, -2, -1, -3, -2].map((val, i) => (
+                                                <div key={i} className="flex-1 flex flex-col items-center justify-end h-full z-10 group">
+                                                    <div 
+                                                        className="w-4 md:w-8 bg-[#e53935] opacity-80 hover:opacity-100 transition-opacity" 
+                                                        style={{height: `${Math.abs(val) * 20}px`}}
+                                                    ></div>
+                                                    <span className="text-[9px] mt-1 font-bold text-[#5d5244]">{1945+i}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <p className="text-xs text-center mt-2 text-[#e53935] font-bold font-typewriter">Status: DEFICIT SPENDING</p>
+                                    </div>
+
                                     <InfoCard title="Critical Situation Update" type="danger">
                                         Foreign investment is high but volatile. <span className="font-bold">Arcasian investors</span> have paused capital flows due to recent instability. Strike action in Omrybaras threatens banking liquidity.
                                     </InfoCard>
