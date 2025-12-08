@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>The Third Lasombian Republic | Government Terminal</title>
     
     <!-- SOCIAL / DISCORD EMBED TAGS -->
     <meta property="og:title" content="The Third Lasombian Republic Archives">
     <meta property="og:description" content="Official government terminal. View strategic maps, cabinet dossiers, economic reports, and budget allocations for the Third Republic.">
     <meta property="og:image" content="images/Lasomby Flag.png">
-    <meta property="og:url" content="https://github.com/yourusername/lasomby-archives"> <!-- REPLACE WITH YOUR ACTUAL LINK -->
+    <meta property="og:url" content="https://mallardtheducky.github.io/Lasomby/">
     <meta property="og:type" content="website">
     <meta name="theme-color" content="#c5a059">
     <meta name="twitter:card" content="summary_large_image">
@@ -29,7 +29,7 @@
 
     <!-- Google Fonts -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400&family=Lato:wght@300;400;700;900&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&family=Special+Elite&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400&family=Lato:wght@300;400;700;900&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&family=Special+Elite&family=VT323&display=swap');
         
         :root {
             --suzerain-gold: #c5a059;
@@ -42,7 +42,8 @@
         body {
             background-color: #0f0e0d;
             color: #2c241b;
-            overflow-x: hidden;
+            overflow: hidden; /* Main scroll handled by React container */
+            font-size: 16px;
         }
         
         /* Textures */
@@ -52,6 +53,7 @@
                 linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.3)),
                 url('https://www.transparenttextures.com/patterns/wood-pattern.png');
             background-attachment: fixed;
+            background-size: cover;
         }
 
         .paper-texture {
@@ -70,6 +72,7 @@
         .font-ui { font-family: 'Lato', sans-serif; }
         .font-body { font-family: 'Merriweather', serif; }
         .font-typewriter { font-family: 'Special Elite', monospace; }
+        .font-terminal { font-family: 'VT323', monospace; }
 
         /* Animations */
         @keyframes slideUpFade {
@@ -85,8 +88,8 @@
         }
 
         @keyframes scanline {
-            0% { transform: translateY(-100%); }
-            100% { transform: translateY(100%); }
+            0% { transform: translateY(-100vh); }
+            100% { transform: translateY(100vh); }
         }
         
         @keyframes flicker {
@@ -99,39 +102,73 @@
             100% { opacity: 0.98; }
         }
 
+        @keyframes crt-on {
+            0% { transform: scale(1, 0.002); opacity: 0; filter: brightness(3); }
+            20% { transform: scale(1, 0.002); opacity: 1; }
+            50% { transform: scale(1, 0.002); opacity: 1; }
+            60% { transform: scale(1, 1); opacity: 1; }
+            100% { transform: scale(1, 1); opacity: 1; filter: brightness(1); }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
         .animate-report { animation: slideUpFade 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
         .animate-stamp { animation: stamp-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s forwards opacity-0; }
+        .animate-blink { animation: blink 1s step-end infinite; }
+        .crt-turn-on { animation: crt-on 0.4s ease-out forwards; transform-origin: center; }
 
         /* Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #1a1816; }
-        ::-webkit-scrollbar-thumb { background: #4a4036; border-radius: 4px; border: 1px solid #1a1816; }
+        ::-webkit-scrollbar-thumb { background: #4a4036; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #c5a059; }
 
-        /* Custom UI Elements */
+        /* CRT Effects - FIXED POSITIONING FOR FULL COVERAGE */
         .crt-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
             background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
             background-size: 100% 4px;
             pointer-events: none;
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            z-index: 50;
+            z-index: 9998;
             animation: flicker 4s infinite;
         }
 
         .scan-line {
-            position: absolute;
-            top: 0; left: 0; right: 0; height: 20px;
+            position: fixed;
+            top: 0; left: 0; width: 100vw;
+            height: 20vh;
             background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.05), rgba(255,255,255,0));
-            animation: scanline 6s linear infinite;
+            animation: scanline 8s linear infinite;
             pointer-events: none;
-            z-index: 51;
+            z-index: 9999;
         }
 
-        /* Chart Styles */
-        .chart-bar { transition: height 0.5s ease-out; }
-        .chart-bar:hover { fill: #c5a059; }
+        .vignette {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.5) 100%);
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+            pointer-events: none;
+            z-index: 9997;
+        }
         
+        /* Modal Backdrop */
+        .modal-backdrop {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(2px);
+            z-index: 9000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
         /* Slider Styling */
         input[type=range] {
             -webkit-appearance: none;
@@ -157,8 +194,8 @@
         }
     </style>
 </head>
-<body class="bg-wood min-h-screen text-gray-200 overflow-hidden">
-    <div id="root"></div>
+<body class="bg-wood min-h-screen text-gray-200">
+    <div id="root" class="h-full"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
@@ -181,13 +218,124 @@
         const Icons = Object.fromEntries(
             ['Landmark', 'Users', 'BookOpen', 'Shield', 'TrendingUp', 'Menu', 'X', 
              'Gavel', 'AlertTriangle', 'Crosshair', 'Anchor', 'Wind', 'PieChart', 
-             'Scroll', 'Map', 'Newspaper', 'ChevronRight', 'Clock', 'Trash2', 'Plus', 'Upload', 'BarChart', 'Target', 'Briefcase', 'Scale'].map(name => [name, createLucideComponent(name)])
+             'Scroll', 'Map', 'Newspaper', 'ChevronRight', 'Clock', 'Trash2', 'Plus', 
+             'Upload', 'BarChart', 'Target', 'Briefcase', 'Scale', 'FileText', 'CheckCircle', 'XCircle', 'Mail', 'Radio', 'Info'].map(name => [name, createLucideComponent(name)])
         );
 
         const FLAG_URL = "images/Lasomby Flag.png";
 
-        // --- CHART COMPONENTS ---
+        // --- COMPONENTS ---
         
+        const BootScreen = ({ onComplete }) => {
+            const [lines, setLines] = useState([]);
+            
+            useEffect(() => {
+                const bootText = [
+                    "BIOS DATE 01/12/49 14:22:51 VER 1.02",
+                    "CPU: MERKOPA-880, SPEED: 200MHz",
+                    "640K RAM SYSTEM  256K EXTENDED",
+                    "Checking NVRAM..",
+                    "Loading LASOMBY_KERNEL.SYS.....",
+                    "Initializing Graphics Adapter...",
+                    "Mounting Volume C: [SYSTEM_ROOT]...",
+                    "Connecting to Government Intranet...",
+                    "Secure Link Established.",
+                    "Welcome, President Varela."
+                ];
+
+                let delay = 0;
+                bootText.forEach((line, index) => {
+                    delay += Math.random() * 300 + 150;
+                    setTimeout(() => {
+                        setLines(prev => [...prev, line]);
+                        if (index === bootText.length - 1) {
+                            setTimeout(onComplete, 800);
+                        }
+                    }, delay);
+                });
+            }, []);
+
+            return (
+                <div className="fixed inset-0 bg-black z-[10000] p-8 font-terminal text-[#c5a059] text-xl leading-relaxed overflow-hidden crt-turn-on">
+                    {lines.map((line, i) => (
+                        <div key={i}>{line}</div>
+                    ))}
+                    <div className="animate-blink mt-2">_</div>
+                </div>
+            );
+        };
+
+        const DecryptText = ({ text }) => {
+            const [display, setDisplay] = useState(text);
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+            
+            useEffect(() => {
+                let iterations = 0;
+                const interval = setInterval(() => {
+                    setDisplay(text.split("").map((letter, index) => {
+                        if(index < iterations) return text[index];
+                        return chars[Math.floor(Math.random() * chars.length)];
+                    }).join(""));
+                    
+                    if(iterations >= text.length) clearInterval(interval);
+                    iterations += 1/3;
+                }, 30);
+                return () => clearInterval(interval);
+            }, [text]);
+
+            return <span>{display}</span>;
+        };
+
+        const Modal = ({ isOpen, onClose, title, children }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="modal-backdrop" onClick={onClose}>
+                    <div className="bg-[#f4f0e6] p-6 max-w-lg w-full shadow-2xl border-4 border-[#2c241b] relative animate-report" onClick={e => e.stopPropagation()}>
+                        <button onClick={onClose} className="absolute top-2 right-2 text-[#8b0000] hover:bg-[#8b0000]/10 p-1 rounded">
+                            <Icons.X size={24} />
+                        </button>
+                        <h2 className="font-header text-3xl font-bold mb-4 border-b-2 border-[#c5a059] pb-2 text-[#2c241b]">{title}</h2>
+                        <div className="font-body text-[#2c241b] text-sm md:text-base leading-relaxed max-h-[60vh] overflow-y-auto">
+                            {children}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Dossier = ({ name, role, traits, bio, image, onClose }) => (
+            <Modal isOpen={true} onClose={onClose} title={`Dossier: ${name}`}>
+                <div className="flex flex-col md:flex-row gap-6">
+                    <div className="shrink-0">
+                        <div className="w-32 h-40 bg-gray-300 border-4 border-[#2c241b] relative shadow-lg transform -rotate-2">
+                            <img src={image} className="w-full h-full object-cover grayscale contrast-125 sepia" />
+                            <div className="absolute -bottom-3 -right-3 w-12 h-12 bg-[#8b0000] rounded-full flex items-center justify-center text-white text-[10px] font-bold border-2 border-white transform rotate-12 shadow">
+                                TOP SEC
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div className="mb-4">
+                            <span className="font-bold text-xs uppercase tracking-widest text-[#5d5244] block">Current Assignment</span>
+                            <span className="font-header text-lg font-bold">{role}</span>
+                        </div>
+                        <div className="mb-4">
+                             <span className="font-bold text-xs uppercase tracking-widest text-[#5d5244] block mb-1">Key Traits</span>
+                             <div className="flex flex-wrap gap-2">
+                                {traits.map(t => (
+                                    <span key={t} className="bg-[#2c241b] text-[#f4f0e6] px-2 py-0.5 text-xs font-bold uppercase">{t}</span>
+                                ))}
+                             </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="mt-6 pt-4 border-t border-[#d1c7b7]">
+                    <span className="font-bold text-xs uppercase tracking-widest text-[#5d5244] block mb-2">Background Summary</span>
+                    <p className="font-typewriter text-sm text-justify">{bio}</p>
+                </div>
+            </Modal>
+        );
+
         const SimpleBarChart = ({ data, height = 150 }) => {
             const maxVal = Math.max(...data.map(d => d.value));
             return (
@@ -243,7 +391,6 @@
                             );
                         })}
                     </svg>
-                    {/* Legend */}
                     <div className="flex flex-col justify-center whitespace-nowrap gap-2">
                          {data.map((d, i) => (
                              <div key={i} className="flex items-center gap-2">
@@ -278,7 +425,23 @@
             </div>
         );
 
-        // --- UI COMPONENTS ---
+        const DecisionCard = ({ title, desc, onApprove, onVeto }) => (
+             <div className="bg-[#fcfbf9] border-2 border-[#d1c7b7] p-4 shadow-sm mb-4 transform hover:scale-[1.01] transition-transform">
+                <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-header font-bold text-lg text-[#2c241b]">{title}</h4>
+                    <Icons.FileText size={18} className="text-[#c5a059]" />
+                </div>
+                <p className="font-body text-sm text-[#5d5244] mb-4">{desc}</p>
+                <div className="flex gap-2">
+                    <button onClick={onApprove} className="flex-1 bg-[#2c241b] text-[#f4f0e6] py-2 px-4 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#4a4036] transition-colors border-2 border-transparent">
+                        <Icons.CheckCircle size={14} /> Approve
+                    </button>
+                    <button onClick={onVeto} className="flex-1 bg-transparent text-[#8b0000] border-2 border-[#8b0000] py-2 px-4 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#8b0000] hover:text-white transition-colors">
+                        <Icons.XCircle size={14} /> Veto
+                    </button>
+                </div>
+            </div>
+        );
 
         const Tooltip = ({ text, children }) => {
             const [show, setShow] = useState(false);
@@ -308,44 +471,33 @@
             </Tooltip>
         );
 
-        const Portrait = ({ id, name, role, align = "center", currentImage, onUpload }) => {
+        const Portrait = ({ id, name, role, align = "center", currentImage, onUpload, onDossier }) => {
             const fileInputRef = useRef(null);
-
-            const handleClick = () => {
+            const handleUploadClick = (e) => {
+                e.stopPropagation();
                 fileInputRef.current.click();
             };
-
             const handleFileChange = (e) => {
                 const file = e.target.files[0];
                 if (file) {
                     const reader = new FileReader();
-                    reader.onloadend = () => {
-                        onUpload(id, reader.result);
-                    };
+                    reader.onloadend = () => onUpload(id, reader.result);
                     reader.readAsDataURL(file);
                 }
             };
 
             return (
                 <div className={`flex flex-col items-center md:items-${align} mb-6 group relative w-full md:w-auto`}>
-                    <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleFileChange} 
-                        className="hidden" 
-                        accept="image/*"
-                    />
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
                     
-                    <div 
-                        onClick={handleClick}
-                        className="w-40 h-48 bg-[#2c241b] border-[6px] border-[#3d342b] shadow-[0_5px_15px_rgba(0,0,0,0.5)] overflow-hidden relative transition-all duration-300 group-hover:border-[#c5a059] group-hover:-translate-y-1 cursor-pointer"
-                    >
+                    <div onClick={onDossier} className="w-40 h-48 bg-[#2c241b] border-[6px] border-[#3d342b] shadow-[0_5px_15px_rgba(0,0,0,0.5)] overflow-hidden relative transition-all duration-300 group-hover:border-[#c5a059] group-hover:-translate-y-1 cursor-pointer">
                         <div className="absolute inset-0 bg-cover bg-center grayscale contrast-125 sepia-[.4]" style={{backgroundImage: `url('${currentImage}')`}}></div>
                         <div className="w-full h-full bg-gradient-to-t from-[#1a1816] via-transparent to-transparent absolute z-10 opacity-60"></div>
-                        
-                        {/* Hover Overlay */}
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Icons.Upload className="text-[#c5a059]" />
+                        <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 p-1 rounded hover:bg-[#c5a059] hover:text-black" onClick={handleUploadClick}>
+                            <Icons.Upload size={16} className="text-white hover:text-black" />
+                        </div>
+                        <div className="absolute bottom-0 w-full bg-[#8b0000] text-white text-[9px] text-center font-bold py-1 opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest">
+                            Click for Dossier
                         </div>
                     </div>
                     
@@ -361,36 +513,31 @@
             <div className="animate-report relative mx-auto max-w-4xl perspective-1000 mb-20">
                 <div className="paper-texture text-[#2c241b] p-6 md:p-16 min-h-[600px] relative z-10 transform transition-transform duration-500 hover:rotate-0 border border-[#d1c7b7]">
                     
-                    {/* Watermark/Bg Decoration */}
                     {emblem && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 md:w-64 md:h-64 border-4 border-[#2c241b] rounded-full opacity-[0.03] pointer-events-none flex items-center justify-center">
                         <div className="w-32 h-32 md:w-48 md:h-48 border-2 border-[#2c241b] rounded-full"></div>
                     </div>}
 
-                    {/* Stamp */}
                     <div className="animate-stamp opacity-0 absolute top-4 right-4 md:top-8 md:right-8 border-[3px] border-[#8b0000] p-1 px-3 md:p-2 md:px-4 rotate-[-12deg] z-20 mix-blend-multiply">
                         <span className="text-[#8b0000] font-black font-typewriter uppercase tracking-widest text-[10px] md:text-sm block stamp">{classification}</span>
                     </div>
 
-                    {/* Header */}
                     <div className="border-b-4 double-border border-[#2c241b] pb-6 mb-8 text-center mt-6 md:mt-0">
                         <div className="flex justify-center items-center gap-2 mb-4 text-[#5d5244] opacity-80">
                             <Icons.Anchor size={16} />
                             <span className="font-ui text-[10px] md:text-xs uppercase tracking-[0.3em]">Official State Document</span>
                             <Icons.Anchor size={16} />
                         </div>
-                        <h1 className="font-header text-3xl md:text-5xl font-black uppercase tracking-tight mb-2 text-[#1a1816]">{title}</h1>
+                        <h1 className="font-header text-3xl md:text-5xl font-black uppercase tracking-tight mb-2 text-[#1a1816]"><DecryptText text={title} /></h1>
                         {subtitle && <h2 className="font-header text-lg md:text-xl italic text-[#5d5244]">{subtitle}</h2>}
                         <div className="mt-4 inline-block bg-[#2c241b] text-[#f4f0e6] px-4 py-1 font-typewriter text-xs tracking-widest">
                             DATE: {date}
                         </div>
                     </div>
 
-                    {/* Content */}
                     <div className="font-body text-base md:text-lg leading-relaxed text-justify space-y-6">
                         {children}
                     </div>
 
-                    {/* Footer */}
                     <div className="mt-16 pt-8 border-t border-[#d1c7b7] flex flex-col md:flex-row justify-between items-center md:items-end opacity-60 gap-4">
                         <div className="font-typewriter text-xs text-center md:text-left">
                             <p>REF: 49-A-121</p>
@@ -403,13 +550,11 @@
                     </div>
                 </div>
                 
-                {/* Paper Stack Effect */}
                 <div className="absolute top-2 left-2 w-full h-full bg-[#e6e0d4] -z-10 rotate-[0.5deg] shadow-lg"></div>
                 <div className="absolute top-4 left-4 w-full h-full bg-[#dcd6c9] -z-20 rotate-[1deg] shadow-lg"></div>
             </div>
         );
 
-        // --- PARLIAMENT BUILDER COMPONENT ---
         const ParliamentBuilder = ({ initialData }) => {
             const [parties, setParties] = useState(initialData);
 
@@ -419,15 +564,8 @@
                 setParties(newParties);
             };
 
-            const addParty = () => {
-                setParties([...parties, { id: Date.now(), name: "New Party", seats: 10, color: "#5d5244" }]);
-            };
-
-            const removeParty = (index) => {
-                const newParties = parties.filter((_, i) => i !== index);
-                setParties(newParties);
-            };
-
+            const addParty = () => setParties([...parties, { id: Date.now(), name: "New Party", seats: 10, color: "#5d5244" }]);
+            const removeParty = (index) => setParties(parties.filter((_, i) => i !== index));
             const totalSeats = parties.reduce((acc, p) => acc + parseInt(p.seats || 0), 0);
 
             const generateSeats = () => {
@@ -471,7 +609,6 @@
 
             return (
                 <div className="flex flex-col gap-8">
-                    {/* VISUALIZATION */}
                     <div className="bg-[#e6e0d4] border border-[#d1c7b7] p-4 flex flex-col items-center shadow-inner rounded-sm overflow-hidden">
                         <h4 className="font-header text-xl font-bold mb-2">Chamber Composition</h4>
                         <div className="relative w-full max-w-[600px] aspect-[5/3]">
@@ -486,7 +623,6 @@
                         </div>
                     </div>
 
-                    {/* EDIT CONTROLS */}
                     <div className="border-t-2 border-[#2c241b] pt-6">
                         <div className="flex justify-between items-center mb-4">
                             <h4 className="font-ui font-bold uppercase text-sm tracking-widest text-[#5d5244]">Input Party Data</h4>
@@ -548,7 +684,7 @@
             }, []);
 
             return (
-                <div className="bg-[#141210] border-t border-[#3d342b] py-2 px-4 flex items-center gap-4 overflow-hidden z-50 relative">
+                <div className="bg-[#141210] border-t border-[#3d342b] py-2 px-4 flex items-center gap-4 overflow-hidden z-50 relative shrink-0">
                     <span className="text-[#c5a059] font-bold text-xs uppercase tracking-widest shrink-0 flex items-center gap-2">
                         <div className="w-2 h-2 bg-[#e53935] rounded-full animate-pulse"></div>
                         Breaking News
@@ -560,82 +696,110 @@
             );
         }
 
-        const StrategicMap = () => (
-            <div className="relative w-full aspect-[16/9] bg-[#b0a995] overflow-hidden border-4 border-[#4a4036] shadow-2xl group">
-                {/* Map Texture */}
-                <div className="absolute inset-0 opacity-30" style={{backgroundImage: "url('https://www.transparenttextures.com/patterns/aged-paper.png')"}}></div>
-                <div className="absolute inset-0 bg-[#c2bba8] mix-blend-multiply"></div>
-                
-                {/* Grid Lines */}
-                <div className="absolute inset-0" style={{backgroundImage: "linear-gradient(#8f8576 1px, transparent 1px), linear-gradient(90deg, #8f8576 1px, transparent 1px)", backgroundSize: "40px 40px", opacity: 0.1}}></div>
+        const StrategicMap = ({ onSelectCity }) => {
+            const handleCityClick = (city) => {
+                if(onSelectCity) onSelectCity(city);
+            };
 
-                {/* SVG Map Layer */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-auto" viewBox="0 0 800 450">
-                    <defs>
-                        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-                            <feDropShadow dx="2" dy="2" stdDeviation="2" floodColor="#000" floodOpacity="0.5"/>
-                        </filter>
-                    </defs>
+            return (
+                <div className="relative w-full aspect-[16/9] bg-[#b0a995] overflow-hidden border-4 border-[#4a4036] shadow-2xl group cursor-crosshair">
+                    {/* Map Texture */}
+                    <div className="absolute inset-0 opacity-30" style={{backgroundImage: "url('https://www.transparenttextures.com/patterns/aged-paper.png')"}}></div>
+                    <div className="absolute inset-0 bg-[#c2bba8] mix-blend-multiply"></div>
+                    <div className="absolute inset-0" style={{backgroundImage: "linear-gradient(#8f8576 1px, transparent 1px), linear-gradient(90deg, #8f8576 1px, transparent 1px)", backgroundSize: "40px 40px", opacity: 0.1}}></div>
 
-                    {/* Borders */}
-                    <path d="M-50,200 Q150,180 300,250 T600,200 T900,150" fill="none" stroke="#6d6150" strokeWidth="2" strokeDasharray="5,5" />
-                    
-                    {/* Connections (Roads/Rails) */}
-                    <g stroke="#3d342b" strokeWidth="3" strokeLinecap="round" opacity="0.6">
-                        <line x1="400" y1="225" x2="320" y2="150" />
-                        <line x1="400" y1="225" x2="550" y2="280" />
-                        <line x1="400" y1="225" x2="250" y2="300" />
-                        <line x1="320" y1="150" x2="200" y2="140" />
-                        <line x1="550" y1="280" x2="650" y2="200" />
-                    </g>
+                    <svg className="absolute inset-0 w-full h-full pointer-events-auto" viewBox="0 0 800 450">
+                        <defs>
+                            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                                <feDropShadow dx="2" dy="2" stdDeviation="2" floodColor="#000" floodOpacity="0.5"/>
+                            </filter>
+                        </defs>
 
-                    {/* Cities */}
-                    {[
-                        {x: 400, y: 225, name: "OMRYBARAS", type: "capital"},
-                        {x: 320, y: 150, name: "Solme", type: "city"},
-                        {x: 550, y: 280, name: "Port Dravin", type: "port"},
-                        {x: 250, y: 300, name: "Velas", type: "city"},
-                        {x: 650, y: 200, name: "Lachaven", type: "city"},
-                        {x: 200, y: 140, name: "Fort Krov", type: "fort"},
-                    ].map((city, i) => (
-                        <g key={i} className="map-node transition-all duration-300" style={{transformOrigin: `${city.x}px ${city.y}px`}}>
-                            <circle cx={city.x} cy={city.y} r={city.type === 'capital' ? 14 : 8} fill="#1a1816" stroke="#c5a059" strokeWidth="2" filter="url(#shadow)" />
-                            <circle cx={city.x} cy={city.y} r={city.type === 'capital' ? 6 : 3} fill="#c5a059" />
-                            
-                            {/* Label Tag */}
-                            <g transform={`translate(${city.x + 15}, ${city.y - 15})`}>
-                                <rect x="0" y="-14" width={city.name.length * 9} height="18" fill="#1a1816" opacity="0.8" rx="2" />
-                                <text x="5" y="0" fill="#e2d5c3" fontFamily="Lato" fontSize="10" fontWeight="bold" letterSpacing="1">{city.name}</text>
-                            </g>
+                        <path d="M-50,200 Q150,180 300,250 T600,200 T900,150" fill="none" stroke="#6d6150" strokeWidth="2" strokeDasharray="5,5" />
+                        <g stroke="#3d342b" strokeWidth="3" strokeLinecap="round" opacity="0.6">
+                            <line x1="400" y1="225" x2="320" y2="150" />
+                            <line x1="400" y1="225" x2="550" y2="280" />
+                            <line x1="400" y1="225" x2="250" y2="300" />
+                            <line x1="320" y1="150" x2="200" y2="140" />
+                            <line x1="550" y1="280" x2="650" y2="200" />
                         </g>
-                    ))}
-                </svg>
+                        {[
+                            {x: 400, y: 225, name: "OMRYBARAS", type: "capital", desc: "Capital City. Pop 780k. Industrial Center."},
+                            {x: 320, y: 150, name: "Solme", type: "city", desc: "Regional Hub. Pop 320k. Agricultural market."},
+                            {x: 550, y: 280, name: "Port Dravin", type: "port", desc: "Major Port. Pop 450k. Naval Base."},
+                            {x: 250, y: 300, name: "Velas", type: "city", desc: "Border Town. Pop 120k. Fortified."},
+                            {x: 650, y: 200, name: "Lachaven", type: "city", desc: "Coastal Resort. Pop 200k. Tourism."},
+                            {x: 200, y: 140, name: "Fort Krov", type: "fort", desc: "Military Outpost. Restricted Access."},
+                        ].map((city, i) => (
+                            <g key={i} onClick={() => handleCityClick(city)} className="map-node transition-all duration-300 hover:scale-125 hover:cursor-pointer" style={{transformOrigin: `${city.x}px ${city.y}px`}}>
+                                <circle cx={city.x} cy={city.y} r={city.type === 'capital' ? 14 : 8} fill="#1a1816" stroke="#c5a059" strokeWidth="2" filter="url(#shadow)" />
+                                <circle cx={city.x} cy={city.y} r={city.type === 'capital' ? 6 : 3} fill="#c5a059" />
+                                <g transform={`translate(${city.x + 15}, ${city.y - 15})`}>
+                                    <rect x="0" y="-14" width={city.name.length * 9} height="18" fill="#1a1816" opacity="0.8" rx="2" />
+                                    <text x="5" y="0" fill="#e2d5c3" fontFamily="Lato" fontSize="10" fontWeight="bold" letterSpacing="1">{city.name}</text>
+                                </g>
+                            </g>
+                        ))}
+                    </svg>
 
-                {/* Map Legend Overlay */}
-                <div className="absolute bottom-4 left-4 bg-[#1a1816]/90 p-3 border border-[#c5a059] backdrop-blur-sm hidden md:block">
-                    <h4 className="text-[#c5a059] font-header text-sm uppercase mb-2 border-b border-[#c5a059]/30 pb-1">Strategic Overview</h4>
-                    <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-[10px] text-[#e2d5c3] font-ui uppercase"><div className="w-2 h-2 rounded-full bg-[#c5a059] border border-black"></div> Capital District</div>
-                        <div className="flex items-center gap-2 text-[10px] text-[#e2d5c3] font-ui uppercase"><div className="w-2 h-2 rounded-full bg-[#2c241b] border border-[#c5a059]"></div> Regional Hub</div>
-                        <div className="flex items-center gap-2 text-[10px] text-[#e2d5c3] font-ui uppercase"><div className="w-4 h-1 bg-[#3d342b]"></div> Main Railway</div>
+                    <div className="absolute bottom-4 left-4 bg-[#1a1816]/90 p-3 border border-[#c5a059] backdrop-blur-sm hidden md:block pointer-events-none">
+                        <h4 className="text-[#c5a059] font-header text-sm uppercase mb-2 border-b border-[#c5a059]/30 pb-1">Strategic Overview</h4>
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-[10px] text-[#e2d5c3] font-ui uppercase"><div className="w-2 h-2 rounded-full bg-[#c5a059] border border-black"></div> Capital District</div>
+                            <div className="flex items-center gap-2 text-[10px] text-[#e2d5c3] font-ui uppercase"><div className="w-2 h-2 rounded-full bg-[#2c241b] border border-[#c5a059]"></div> Regional Hub</div>
+                            <div className="flex items-center gap-2 text-[10px] text-[#e2d5c3] font-ui uppercase"><div className="w-4 h-1 bg-[#3d342b]"></div> Main Railway</div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            );
+        };
+
+        const CityModal = ({ city, onClose }) => (
+            <Modal isOpen={true} onClose={onClose} title={`Sector Intelligence: ${city.name}`}>
+                 <div className="flex gap-4 mb-4">
+                     <div className="bg-[#1a1816] text-[#c5a059] p-4 flex items-center justify-center w-24 h-24 border-2 border-[#c5a059] shrink-0">
+                        {city.type === 'capital' ? <Icons.Landmark size={40} /> : city.type === 'port' ? <Icons.Anchor size={40} /> : <Icons.Map size={40} />}
+                     </div>
+                     <div>
+                         <p className="font-typewriter text-lg mb-2 text-[#8b0000] font-bold">{city.type.toUpperCase()} CLASS</p>
+                         <p className="text-sm font-body">{city.desc}</p>
+                     </div>
+                 </div>
+                 <div className="grid grid-cols-2 gap-4 text-sm mt-4 border-t border-[#d1c7b7] pt-4">
+                     <div className="flex justify-between border-b border-dashed border-[#5d5244] pb-1">
+                         <span className="font-bold">Garrison Strength:</span>
+                         <span>High</span>
+                     </div>
+                     <div className="flex justify-between border-b border-dashed border-[#5d5244] pb-1">
+                         <span className="font-bold">Civil Unrest:</span>
+                         <span>Moderate</span>
+                     </div>
+                     <div className="flex justify-between border-b border-dashed border-[#5d5244] pb-1">
+                         <span className="font-bold">Supply Status:</span>
+                         <span className="text-[#4caf50]">Optimal</span>
+                     </div>
+                     <div className="flex justify-between border-b border-dashed border-[#5d5244] pb-1">
+                         <span className="font-bold">Grid Infrastructure:</span>
+                         <span>Developing</span>
+                     </div>
+                 </div>
+            </Modal>
         );
 
         // --- MAIN APP ---
 
         function LasombyApp() {
+            const [isBooting, setIsBooting] = useState(true);
             const [activeTab, setActiveTab] = useState('overview');
             const [showMobileMenu, setShowMobileMenu] = useState(false);
+            const [selectedCity, setSelectedCity] = useState(null);
+            const [activeDossier, setActiveDossier] = useState(null);
             
-            // Image States
             const [images, setImages] = useState({
                 president: "images/Cropped_portrait_of_FDR_2.webp",
                 pm: "images/Margaret_Thatcher_(1983).jpg"
             });
 
-            // Budget States
             const [budget, setBudget] = useState({
                 health: 5,
                 education: 5,
@@ -645,8 +809,7 @@
 
             const totalBudgetImpact = useMemo(() => {
                 const totalSpending = budget.health + budget.education + budget.military + budget.law;
-                // Base is 0, start at -2 deficit. Each point above 5 costs 1 budget. Each point below saves 1.
-                const baseline = 20; // 5 * 4
+                const baseline = 20; 
                 return (baseline - totalSpending) - 2; 
             }, [budget]);
 
@@ -683,16 +846,29 @@
                 </button>
             );
 
+            if (isBooting) {
+                return <BootScreen onComplete={() => setIsBooting(false)} />;
+            }
+
             return (
-                <div className="min-h-screen flex flex-col md:flex-row font-sans selection:bg-[#c5a059] selection:text-black">
+                <div className="flex flex-col md:flex-row font-sans selection:bg-[#c5a059] selection:text-black h-[100dvh] overflow-hidden crt-main">
                     
+                    {/* MODALS */}
+                    {selectedCity && <CityModal city={selectedCity} onClose={() => setSelectedCity(null)} />}
+                    {activeDossier && (
+                        <Dossier 
+                            {...activeDossier} 
+                            onClose={() => setActiveDossier(null)} 
+                        />
+                    )}
+
                     {/* LEFT SIDEBAR (Navigation) */}
                     <aside className={`
                         fixed inset-y-0 left-0 z-[60] w-72 bg-[#1a1816] border-r border-[#3d342b] flex flex-col shadow-2xl transform transition-transform duration-300 md:relative md:translate-x-0
                         ${showMobileMenu ? 'translate-x-0' : '-translate-x-full'}
                     `}>
                         {/* Logo Area */}
-                        <div className="p-6 md:p-8 border-b border-[#3d342b] bg-[#141210] flex justify-between items-center">
+                        <div className="p-6 md:p-8 border-b border-[#3d342b] bg-[#141210] flex justify-between items-center shrink-0">
                             <div className="flex items-center gap-4">
                                 <img src={FLAG_URL} alt="Flag" className="h-10 md:h-12 w-auto shadow-lg" />
                                 <div>
@@ -700,7 +876,6 @@
                                     <span className="text-[8px] md:text-[9px] text-[#c5a059] uppercase tracking-[0.2em] block mt-1">Third Republic</span>
                                 </div>
                             </div>
-                            {/* Mobile Close Button */}
                             <button onClick={() => setShowMobileMenu(false)} className="md:hidden text-[#c5a059]">
                                 <Icons.X size={24} />
                             </button>
@@ -714,10 +889,28 @@
                             <NavItem id="military" label="Military" icon={Icons.Shield} desc="Army, Navy, and Air Force strategic assessment." />
                             <NavItem id="economy" label="Economy" icon={Icons.TrendingUp} desc="Budget, trade balance, and production output." />
                             <NavItem id="codex" label="Codex" icon={Icons.BookOpen} desc="Historical records and cultural archives." />
+                            <NavItem id="comms" label="Telegraphs" icon={Icons.Radio} desc="Intercepted signals and diplomatic cables." />
                         </nav>
+                        
+                        {/* Audio Player Module */}
+                        <div className="p-4 border-t border-[#3d342b] bg-[#1a1512]">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-[10px] uppercase text-[#c5a059] font-bold tracking-widest flex items-center gap-1"><Icons.Radio size={12}/> National Radio</span>
+                                <div className="flex gap-1">
+                                    <div className="w-1 h-1 bg-red-500 rounded-full animate-pulse"></div>
+                                    <span className="text-[8px] text-red-500 font-bold">LIVE</span>
+                                </div>
+                            </div>
+                            <div className="h-6 bg-[#2c241b] rounded-sm relative overflow-hidden border border-[#5d5244]">
+                                <div className="absolute top-0 bottom-0 left-0 w-1/3 bg-[#c5a059]/20"></div>
+                                <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-[#c5a059]/50"></div>
+                                <div className="absolute top-0 bottom-0 left-1/4 w-[2px] bg-[#c5a059] animate-[slideUpFade_2s_infinite]"></div>
+                            </div>
+                            <div className="text-[9px] text-[#5d5244] mt-1 text-center font-typewriter">Broadcasting from Omrybaras...</div>
+                        </div>
 
                         {/* Bottom Profile */}
-                        <div className="p-6 bg-[#141210] border-t border-[#3d342b]">
+                        <div className="p-6 bg-[#141210] border-t border-[#3d342b] shrink-0">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-[#2c241b] border border-[#c5a059] overflow-hidden">
                                     <img src={images.president} className="w-full h-full object-cover grayscale sepia" />
@@ -731,7 +924,7 @@
                     </aside>
 
                     {/* MAIN CONTENT AREA */}
-                    <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+                    <div className="flex-1 flex flex-col h-full overflow-hidden relative">
                         
                         {/* TOP BAR (Stats) */}
                         <header className="h-16 md:h-20 bg-[#1a1816]/95 backdrop-blur border-b border-[#3d342b] flex items-center justify-between px-4 md:px-8 z-40 shadow-lg relative shrink-0">
@@ -756,16 +949,28 @@
                         </header>
 
                         {/* CONTENT SCROLLABLE AREA */}
-                        <main className="flex-1 overflow-y-auto p-2 md:p-10 relative">
+                        <main className="flex-1 overflow-y-auto p-2 md:p-10 relative scroll-smooth">
                             {/* CRT/Scanline Overlay Effect */}
                             <div className="crt-overlay"></div>
                             <div className="scan-line"></div>
+                            <div className="vignette"></div>
 
                             {activeTab === 'overview' && (
                                 <PaperReport title="Republic Overview" subtitle="Strategic Assessment & Demographics" date="JAN 12, 1949">
                                     <div className="mb-10">
-                                        <StrategicMap />
-                                        <p className="text-center text-xs font-ui italic text-[#5d5244] mt-2">Fig 1.1: Strategic Map of Southern Merkopa</p>
+                                        <StrategicMap onSelectCity={setSelectedCity} />
+                                        <p className="text-center text-xs font-ui italic text-[#5d5244] mt-2">Fig 1.1: Strategic Map (Click nodes for Intel)</p>
+                                    </div>
+
+                                    {/* DECISION WIDGET */}
+                                    <div className="mb-8 p-4 border-l-4 border-[#c5a059] bg-[#1a1816]/5">
+                                        <h3 className="font-header font-bold text-xl mb-4 text-[#2c241b]">Pending Decisions</h3>
+                                        <DecisionCard 
+                                            title="Campaign Finance Bill" 
+                                            desc="The Assembly has proposed doubling state funding for election campaigns. This benefits larger parties but strains the budget."
+                                            onApprove={() => alert("Bill Signed. Budget -1. PUR Influence +1")}
+                                            onVeto={() => alert("Bill Vetoed. Budget Stable. PUR Influence -1")}
+                                        />
                                     </div>
 
                                     <div className="columns-1 md:columns-2 gap-8 text-justify">
@@ -810,6 +1015,13 @@
                                             role="President" 
                                             currentImage={images.president}
                                             onUpload={handleImageUpload}
+                                            onDossier={() => setActiveDossier({
+                                                name: "Maximo Varela",
+                                                role: "President of the Republic",
+                                                traits: ["Reformist", "Military Background", "Pragmatist"],
+                                                bio: "A former Colonel who orchestrated the 1944 coup against the Directorate, only to transition the country to democracy. Varela walks a tightrope between his military past and his democratic promises. He faces pressure from both the old guard and radical reformers.",
+                                                image: images.president
+                                            })}
                                         />
                                         <Portrait 
                                             id="pm"
@@ -817,11 +1029,18 @@
                                             role="Prime Minister" 
                                             currentImage={images.pm}
                                             onUpload={handleImageUpload}
+                                            onDossier={() => setActiveDossier({
+                                                name: "Sofia Castañeda",
+                                                role: "Prime Minister",
+                                                traits: ["Economist", "Liberal", "Diplomat"],
+                                                bio: "An academic economist turned politician. Castañeda represents the civilian wing of the PUR. She is the architect of the current economic stabilization plan but lacks the military connections of the President.",
+                                                image: images.pm
+                                            })}
                                         />
                                     </div>
 
                                     <div className="text-center font-ui text-xs text-[#5d5244] italic mb-8">
-                                        * Click portraits to upload custom identification files.
+                                        * Click portraits to open dossier. Hover top-right to upload ID.
                                     </div>
 
                                     <h3 className="font-header font-bold text-2xl border-b-2 border-[#2c241b] pb-2 mb-6">Political Situation</h3>
@@ -1016,7 +1235,7 @@
                                         </div>
                                     </div>
                                     
-                                    {/* NEW FEATURE: BUDGET ALLOCATION SLIDERS */}
+                                    {/* BUDGET ALLOCATION SLIDERS */}
                                     <div className="bg-[#e6e0d4] p-6 border-l-4 border-[#c5a059] shadow-md mb-8">
                                         <h3 className="font-header font-bold text-xl mb-4 text-[#2c241b] border-b border-[#c5a059] pb-2">Ministry Allocation</h3>
                                         <p className="text-xs font-ui mb-4 text-[#5d5244]">Adjust funding levels. Changes impact the national budget immediately.</p>
@@ -1074,6 +1293,37 @@
                                     <InfoCard title="Critical Situation Update" type="danger">
                                         Foreign investment is high but volatile. <span className="font-bold">Arcasian investors</span> have paused capital flows due to recent instability. Strike action in Omrybaras threatens banking liquidity.
                                     </InfoCard>
+                                </PaperReport>
+                            )}
+
+                             {/* COMMS TAB */}
+                            {activeTab === 'comms' && (
+                                <PaperReport title="Diplomatic Cables" subtitle="Ministry of Foreign Affairs" date="TOP SECRET" classification="SIGINT">
+                                    <div className="space-y-4 font-typewriter text-sm">
+                                        <div className="bg-[#fffdf5] p-4 border border-[#d1c7b7] shadow-sm transform -rotate-1">
+                                            <div className="flex justify-between border-b border-dashed border-gray-400 pb-2 mb-2">
+                                                <span className="font-bold text-[#8b0000]">FROM: General Staff (Northern Command)</span>
+                                                <span>12/01/49</span>
+                                            </div>
+                                            <p>"G'aleroi movement detected near sector 4. Recommend increased border patrols. Troops await orders."</p>
+                                        </div>
+
+                                        <div className="bg-[#fffdf5] p-4 border border-[#d1c7b7] shadow-sm transform rotate-1">
+                                            <div className="flex justify-between border-b border-dashed border-gray-400 pb-2 mb-2">
+                                                <span className="font-bold text-[#003366]">FROM: Arcasian Embassy</span>
+                                                <span>11/01/49</span>
+                                            </div>
+                                            <p>"The President sends his regards. Economic aid package is contingent on favorable trade tariffs. Awaiting confirmation."</p>
+                                        </div>
+
+                                        <div className="bg-[#fffdf5] p-4 border border-[#d1c7b7] shadow-sm transform -rotate-1 opacity-75">
+                                            <div className="flex justify-between border-b border-dashed border-gray-400 pb-2 mb-2">
+                                                <span className="font-bold text-[#5d5244]">FROM: Internal Security</span>
+                                                <span>10/01/49</span>
+                                            </div>
+                                            <p>"Strike leaders in Omrybaras identified. Requesting permission to detain for questioning. Situation volatile."</p>
+                                        </div>
+                                    </div>
                                 </PaperReport>
                             )}
 
